@@ -93,6 +93,7 @@ install-lib$(NAME)-headers: $(addprefix $(SUBDIR),$(HEADERS) $(BUILT_HEADERS))
 install-lib$(NAME)-pkgconfig: $(SUBDIR)lib$(FULLNAME).pc
 	$(Q)mkdir -p "$(PKGCONFIGDIR)"
 	$$(INSTALL) -m 644 $$^ "$(PKGCONFIGDIR)"
+	(cd "$(PKGCONFIGDIR)" && ln -sf lib$(FULLNAME).pc lib$(NAME).pc)
 
 uninstall-libs::
 	-$(RM) "$(SHLIBDIR)/$(SLIBNAME_WITH_MAJOR)" \
