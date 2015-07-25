@@ -65,6 +65,14 @@ static void free_buffers(VP8Context *s)
     s->macroblocks = NULL;
 }
 
+static void vp8_release_frame(VP8Context *s, VP8Frame *f)
+{
+    av_buffer_unref(&f->seg_map);
+    ff_thread_release_buffer(s->avctx, &f->tf);
+    av_buffer_unref(&f->hwaccel_priv_buf);
+    f->hwaccel_picture_private = NULL;
+}
+
 static int vp8_alloc_frame(VP8Context *s, VP8Frame *f, int ref)
 {
     int ret;
@@ -72,16 +80,24 @@ static int vp8_alloc_frame(VP8Context *s, VP8Frame *f, int ref)
                                     ref ? AV_GET_BUFFER_FLAG_REF : 0)) < 0)
         return ret;
     if (!(f->seg_map = av_buffer_allocz(s->mb_width * s->mb_height))) {
-        ff_thread_release_buffer(s->avctx, &f->tf);
-        return AVERROR(ENOMEM);
+        goto fail;
     }
-    return 0;
-}
 
-static void vp8_release_frame(VP8Context *s, VP8Frame *f)
-{
-    av_buffer_unref(&f->seg_map);
-    ff_thread_release_buffer(s->avctx, &f->tf);
+    if (s->avctx->hwaccel) {
+        const AVHWAccel *hwaccel = s->avctx->hwaccel;
+        av_assert0(!f->hwaccel_picture_private);
+        if (hwaccel->frame_priv_data_size) {
+            f->hwaccel_priv_buf = av_buffer_allocz(hwaccel->frame_priv_data_size);
+            if (!f->hwaccel_priv_buf)
+                goto fail;
+            f->hwaccel_picture_private = f->hwaccel_priv_buf->data;
+        }
+    }
+
+    return 0;
+fail:
+    vp8_release_frame(s, f);
+    return AVERROR(ENOMEM);
 }
 
 #if CONFIG_VP8_DECODER
@@ -95,11 +111,20 @@ static int vp8_ref_frame(VP8Context *s, VP8Frame *dst, VP8Frame *src)
         return ret;
     if (src->seg_map &&
         !(dst->seg_map = av_buffer_ref(src->seg_map))) {
-        vp8_release_frame(s, dst);
-        return AVERROR(ENOMEM);
+        goto fail;
+    }
+
+    if (src->hwaccel_picture_private) {
+        dst->hwaccel_priv_buf = av_buffer_ref(src->hwaccel_priv_buf);
+        if (!dst->hwaccel_priv_buf)
+            goto fail;
+        dst->hwaccel_picture_private = dst->hwaccel_priv_buf->data;
     }
 
     return 0;
+fail:
+    vp8_release_frame(s, dst);
+    return AVERROR(ENOMEM);
 }
 #endif /* CONFIG_VP8_DECODER */
 
@@ -633,7 +658,7 @@ static int vp7_decode_frame_header(VP8Context *s, const uint8_t *buf, int buf_si
         vp78_update_pred16x16_pred8x8_mvc_probabilities(s, VP7_MVC_SIZE);
     }
 
-    return 0;
+    return buf_size; // Remaining packet
 }
 
 static int vp8_decode_frame_header(VP8Context *s, const uint8_t *buf, int buf_size)
@@ -760,7 +785,7 @@ static int vp8_decode_frame_header(VP8Context *s, const uint8_t *buf, int buf_si
         vp78_update_pred16x16_pred8x8_mvc_probabilities(s, VP8_MVC_SIZE);
     }
 
-    return 0;
+    return buf_size; // Remaining packet
 }
 
 static av_always_inline
@@ -2529,14 +2554,18 @@ int vp78_decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
     int ret, i, referenced, num_jobs;
     enum AVDiscard skip_thresh;
     VP8Frame *av_uninit(curframe), *prev_frame;
+    uint8_t *pdata = avpkt->data;
+    int psize = avpkt->size;
 
     if (is_vp7)
-        ret = vp7_decode_frame_header(s, avpkt->data, avpkt->size);
+        ret = vp7_decode_frame_header(s, pdata, psize);
     else
-        ret = vp8_decode_frame_header(s, avpkt->data, avpkt->size);
+        ret = vp8_decode_frame_header(s, pdata, psize);
 
     if (ret < 0)
         goto err;
+    pdata += ret;
+    psize -= ret;
 
     prev_frame = s->framep[VP56_FRAME_CURRENT];
 
@@ -2609,7 +2638,7 @@ int vp78_decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
 
     s->next_framep[VP56_FRAME_CURRENT] = curframe;
 
-    if (avctx->codec->update_thread_context)
+    if (avctx->codec->update_thread_context && !avctx->hwaccel)
         ff_thread_finish_setup(avctx);
 
     s->linesize   = curframe->tf.f->linesize[0];
@@ -2651,14 +2680,25 @@ int vp78_decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
         s->thread_data[i].thread_mb_pos = 0;
         s->thread_data[i].wait_mb_pos   = INT_MAX;
     }
-    if (is_vp7)
-        avctx->execute2(avctx, vp7_decode_mb_row_sliced, s->thread_data, NULL,
-                        num_jobs);
-    else
-        avctx->execute2(avctx, vp8_decode_mb_row_sliced, s->thread_data, NULL,
-                        num_jobs);
-
-    ff_thread_report_progress(&curframe->tf, INT_MAX, 0);
+    if (avctx->hwaccel) {
+        ret = avctx->hwaccel->start_frame(avctx, NULL, 0);
+        if (ret < 0)
+            goto err;
+        ret = avctx->hwaccel->decode_slice(avctx, pdata, psize);
+        if (ret < 0)
+            goto err;
+        ret = avctx->hwaccel->end_frame(avctx);
+        if (ret < 0)
+            goto err;
+    } else {
+        if (is_vp7)
+            avctx->execute2(avctx, vp7_decode_mb_row_sliced, s->thread_data, NULL,
+                            num_jobs);
+        else
+            avctx->execute2(avctx, vp8_decode_mb_row_sliced, s->thread_data, NULL,
+                            num_jobs);
+        ff_thread_report_progress(&curframe->tf, INT_MAX, 0);
+    }
     memcpy(&s->framep[0], &s->next_framep[0], sizeof(s->framep[0]) * 4);
 
 skip_decode:
