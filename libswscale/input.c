@@ -634,6 +634,33 @@ static void read_ayuv64le_A_c(uint8_t *dst, const uint8_t *src, const uint8_t *u
         AV_WN16(dst + i * 2, AV_RL16(src + i * 8));
 }
 
+static void read_yuva32le_Y_c(uint8_t *dst, const uint8_t *src, const uint8_t *unused0, const uint8_t *unused1, int width,
+                               uint32_t *unused2)
+{
+    int i;
+    for (i = 0; i < width; i++)
+        dst[i] = src[i * 4];
+}
+
+
+static void read_yuva32le_UV_c(uint8_t *dstU, uint8_t *dstV, const uint8_t *unused0, const uint8_t *src,
+                               const uint8_t *unused1, int width, uint32_t *unused2)
+{
+    int i;
+    for (i = 0; i < width; i++) {
+        dstU[i] = src[i * 4 + 1];
+        dstV[i] = src[i * 4 + 2];
+    }
+}
+
+static void read_yuva32le_A_c(uint8_t *dst, const uint8_t *src, const uint8_t *unused0, const uint8_t *unused1, int width,
+                                uint32_t *unused2)
+{
+    int i;
+    for (i = 0; i < width; i++)
+        dst[i] = src[i * 4 + 3];
+}
+
 /* This is almost identical to the previous, end exists only because
  * yuy2ToY/UV)(dst, src + 1, ...) would have 100% unaligned accesses. */
 static void uyvyToY_c(uint8_t *dst, const uint8_t *src, const uint8_t *unused1, const uint8_t *unused2,  int width,
@@ -1017,6 +1044,9 @@ av_cold void ff_sws_init_input_funcs(SwsContext *c)
     case AV_PIX_FMT_AYUV64LE:
         c->chrToYV12 = read_ayuv64le_UV_c;
         break;
+    case AV_PIX_FMT_YUVA32LE:
+        c->chrToYV12 = read_yuva32le_UV_c;
+        break;
     }
     if (c->chrSrcHSubSample) {
         switch (srcFormat) {
@@ -1304,6 +1334,9 @@ av_cold void ff_sws_init_input_funcs(SwsContext *c)
     case AV_PIX_FMT_AYUV64LE:
         c->lumToYV12 = read_ayuv64le_Y_c;
         break;
+    case AV_PIX_FMT_YUVA32LE:
+        c->lumToYV12 = read_yuva32le_Y_c;
+        break;
     case AV_PIX_FMT_YUYV422:
     case AV_PIX_FMT_YVYU422:
     case AV_PIX_FMT_YA8:
@@ -1432,6 +1465,9 @@ av_cold void ff_sws_init_input_funcs(SwsContext *c)
             break;
         case AV_PIX_FMT_AYUV64LE:
             c->alpToYV12 = read_ayuv64le_A_c;
+            break;
+        case AV_PIX_FMT_YUVA32LE:
+            c->alpToYV12 = read_yuva32le_A_c;
             break;
         case AV_PIX_FMT_PAL8 :
             c->alpToYV12 = palToA_c;

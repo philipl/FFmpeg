@@ -2004,6 +2004,32 @@ const AVPixFmtDescriptor av_pix_fmt_descriptors[AV_PIX_FMT_NB] = {
         },
         .flags = AV_PIX_FMT_FLAG_BE | AV_PIX_FMT_FLAG_ALPHA,
     },
+    [AV_PIX_FMT_YUVA32LE] = {
+        .name = "yuva32le",
+        .nb_components = 4,
+        .log2_chroma_w = 0,
+        .log2_chroma_h = 0,
+        .comp = {
+            { 0, 3, 1, 0, 7 },        /* Y */
+            { 0, 3, 2, 0, 7 },        /* U */
+            { 0, 3, 3, 0, 7 },        /* V */
+            { 0, 3, 4, 0, 7 },        /* A */
+        },
+        .flags = AV_PIX_FMT_FLAG_ALPHA,
+    },
+    [AV_PIX_FMT_YUVA32BE] = {
+        .name = "yuva32be",
+        .nb_components = 4,
+        .log2_chroma_w = 0,
+        .log2_chroma_h = 0,
+        .comp = {
+            { 0, 3, 1, 0, 7 },        /* Y */
+            { 0, 3, 2, 0, 7 },        /* U */
+            { 0, 3, 3, 0, 7 },        /* V */
+            { 0, 3, 4, 0, 7 },        /* A */
+        },
+        .flags = AV_PIX_FMT_FLAG_BE | AV_PIX_FMT_FLAG_ALPHA,
+    },
 };
 
 static const char *color_range_names[AVCOL_RANGE_NB] = {

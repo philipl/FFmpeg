@@ -2057,6 +2057,51 @@ yuv2ayuv64le_X_c(SwsContext *c, const int16_t *lumFilter,
     }
 }
 
+static void
+yuv2yuva32le_X_c(SwsContext *c, const int16_t *lumFilter,
+                 const int16_t **lumSrc, int lumFilterSize,
+                 const int16_t *chrFilter, const int16_t **chrUSrc,
+                 const int16_t **chrVSrc, int chrFilterSize,
+                 const int16_t **alpSrc, uint8_t *dest, int dstW, int y)
+{
+    int hasAlpha = !!alpSrc;
+    int i;
+
+    for (i = 0; i < dstW; i++) {
+        int Y = 1 << 14, U = 1 << 14;
+        int V = 1 << 14, A = 1 << 14;
+        int j;
+
+        Y -= 0x40000000;
+        U -= 0x40000000;
+        V -= 0x40000000;
+        A -= 0x40000000;
+
+        for (j = 0; j < lumFilterSize; j++)
+            Y += lumSrc[j][i] * (unsigned)lumFilter[j];
+
+        for (j = 0; j < chrFilterSize; j++)
+            U += chrUSrc[j][i] * (unsigned)chrFilter[j];
+
+        for (j = 0; j < chrFilterSize; j++)
+            V += chrVSrc[j][i] * (unsigned)chrFilter[j];
+
+        if (hasAlpha)
+            for (j = 0; j < lumFilterSize; j++)
+                A += alpSrc[j][i] * (unsigned)lumFilter[j];
+
+        Y = 0x80 + av_clip_int8(Y >> 23);
+        U = 0x80 + av_clip_int8(U >> 23);
+        V = 0x80 + av_clip_int8(V >> 23);
+        A = 0x80 + av_clip_int8(A >> 23);
+
+        dest[4 * i + 0] = Y;
+        dest[4 * i + 1] = U;
+        dest[4 * i + 2] = V;
+        dest[4 * i + 3] = hasAlpha ? A : 255;
+    }
+}
+
 av_cold void ff_sws_init_output_funcs(SwsContext *c,
                                       yuv2planar1_fn *yuv2plane1,
                                       yuv2planarX_fn *yuv2planeX,
@@ -2508,6 +2553,9 @@ av_cold void ff_sws_init_output_funcs(SwsContext *c,
         break;
     case AV_PIX_FMT_AYUV64LE:
         *yuv2packedX = yuv2ayuv64le_X_c;
+        break;
+    case AV_PIX_FMT_YUVA32LE:
+        *yuv2packedX = yuv2yuva32le_X_c;
         break;
     }
 }
