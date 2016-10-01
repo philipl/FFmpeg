@@ -29,6 +29,10 @@ typedef struct CUDAFramesContext {
     int shift_width, shift_height;
 } CUDAFramesContext;
 
+typedef struct CUDAArraySet {
+  CUarray plane[3];
+} CUDAArraySet;
+
 static const enum AVPixelFormat supported_formats[] = {
     AV_PIX_FMT_NV12,
     AV_PIX_FMT_YUV420P,
@@ -44,7 +48,10 @@ static void cuda_buffer_free(void *opaque, uint8_t *data)
 
     cuCtxPushCurrent(hwctx->cuda_ctx);
 
-    cuMemFree((CUdeviceptr)data);
+    for (int i = 0; i < 3; i++) {
+      cuArrayDestroy(((CUDAArraySet *)data)->plane[i]);
+    }
+    free(data);
 
     cuCtxPopCurrent(&dummy);
 }
@@ -56,7 +63,7 @@ static AVBufferRef *cuda_pool_alloc(void *opaque, int size)
 
     AVBufferRef *ret = NULL;
     CUcontext dummy = NULL;
-    CUdeviceptr data;
+    CUDAArraySet *set = av_mallocz(sizeof (CUDAArraySet));
     CUresult err;
 
     err = cuCtxPushCurrent(hwctx->cuda_ctx);
@@ -65,13 +72,29 @@ static AVBufferRef *cuda_pool_alloc(void *opaque, int size)
         return NULL;
     }
 
-    err = cuMemAlloc(&data, size);
-    if (err != CUDA_SUCCESS)
+    if (!set) {
+        av_log(ctx, AV_LOG_ERROR, "Error allocating memory for CUDA context\n");
         goto fail;
+    }
 
-    ret = av_buffer_create((uint8_t*)data, size, cuda_buffer_free, ctx, 0);
+    for (int i = 0; i < 3; i++) {
+        CUDA_ARRAY_DESCRIPTOR params = {
+            .Format = CU_AD_FORMAT_UNSIGNED_INT8,
+            .Height = ctx->height / (i + 1),
+            .Width = ctx->width,
+            .NumChannels = 1,
+        };
+        err = cuArrayCreate(&set->plane[i], &params);
+        if (err != CUDA_SUCCESS)
+            goto fail;
+    }
+
+    ret = av_buffer_create((uint8_t*)set, size, cuda_buffer_free, ctx, 0);
     if (!ret) {
-        cuMemFree(data);
+        for (int i = 0; i < 3; i++) {
+          cuArrayDestroy(set->plane[i]);
+        }
+        free(set);
         goto fail;
     }
 
@@ -126,8 +149,10 @@ static int cuda_get_buffer(AVHWFramesContext *ctx, AVFrame *frame)
 
     switch (ctx->sw_format) {
     case AV_PIX_FMT_NV12:
-        frame->data[0]     = frame->buf[0]->data;
-        frame->data[1]     = frame->data[0] + ctx->width * ctx->height;
+        //frame->data[0]     = frame->buf[0]->data;
+        //frame->data[1]     = frame->data[0] + ctx->width * ctx->height;
+        frame->data[0]     = (uint8_t *)(((CUDAArraySet *)frame->buf[0]->data)->plane[0]);
+        frame->data[1]     = (uint8_t *)(((CUDAArraySet *)frame->buf[0]->data)->plane[1]);
         frame->linesize[0] = ctx->width;
         frame->linesize[1] = ctx->width;
         break;
