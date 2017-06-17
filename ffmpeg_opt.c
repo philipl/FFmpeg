@@ -91,8 +91,8 @@ const HWAccel hwaccels[] = {
       AV_HWDEVICE_TYPE_VAAPI },
 #endif
 #if CONFIG_CUVID
-    { "cuvid", cuvid_init, HWACCEL_CUVID, AV_PIX_FMT_CUDA,
-      AV_HWDEVICE_TYPE_NONE },
+    { "cuvid", hwaccel_decode_init, HWACCEL_CUVID, AV_PIX_FMT_CUDA,
+      AV_HWDEVICE_TYPE_CUDA },
 #endif
     { 0 },
 };
