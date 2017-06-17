@@ -68,31 +68,31 @@
 const HWAccel hwaccels[] = {
 #if HAVE_VDPAU_X11
     { "vdpau", hwaccel_decode_init, HWACCEL_VDPAU, AV_PIX_FMT_VDPAU,
-      AV_HWDEVICE_TYPE_VDPAU },
+      AV_HWDEVICE_TYPE_VDPAU, 0 },
 #endif
 #if HAVE_DXVA2_LIB
     { "dxva2", dxva2_init, HWACCEL_DXVA2, AV_PIX_FMT_DXVA2_VLD,
-      AV_HWDEVICE_TYPE_NONE },
+      AV_HWDEVICE_TYPE_NONE, 0 },
 #endif
 #if CONFIG_VDA
     { "vda",   videotoolbox_init,   HWACCEL_VDA,   AV_PIX_FMT_VDA,
-      AV_HWDEVICE_TYPE_NONE },
+      AV_HWDEVICE_TYPE_NONE, 0 },
 #endif
 #if CONFIG_VIDEOTOOLBOX
     { "videotoolbox",   videotoolbox_init,   HWACCEL_VIDEOTOOLBOX,   AV_PIX_FMT_VIDEOTOOLBOX,
-      AV_HWDEVICE_TYPE_NONE },
+      AV_HWDEVICE_TYPE_NONE, 0 },
 #endif
 #if CONFIG_LIBMFX
     { "qsv",   qsv_init,   HWACCEL_QSV,   AV_PIX_FMT_QSV,
-      AV_HWDEVICE_TYPE_NONE },
+      AV_HWDEVICE_TYPE_NONE, 0 },
 #endif
 #if CONFIG_VAAPI
     { "vaapi", hwaccel_decode_init, HWACCEL_VAAPI, AV_PIX_FMT_VAAPI,
-      AV_HWDEVICE_TYPE_VAAPI },
+      AV_HWDEVICE_TYPE_VAAPI, 0 },
 #endif
 #if CONFIG_CUVID
     { "cuvid", hwaccel_decode_init, HWACCEL_CUVID, AV_PIX_FMT_CUDA,
-      AV_HWDEVICE_TYPE_CUDA },
+      AV_HWDEVICE_TYPE_CUDA, 1 },
 #endif
     { 0 },
 };
@@ -708,6 +708,7 @@ static void add_input_streams(OptionsContext *o, AVFormatContext *ic)
         char *discard_str = NULL;
         const AVClass *cc = avcodec_get_class();
         const AVOption *discard_opt = av_opt_find(&cc, "skip_frame", NULL, 0, 0);
+        enum AVPixelFormat default_pix_fmt = AV_PIX_FMT_NONE;
 
         if (!ist)
             exit_program(1);
@@ -805,6 +806,8 @@ static void add_input_streams(OptionsContext *o, AVFormatContext *ic)
                     for (i = 0; hwaccels[i].name; i++) {
                         if (!strcmp(hwaccels[i].name, hwaccel)) {
                             ist->hwaccel_id = hwaccels[i].id;
+                            if (hwaccels[i].pix_fmt_is_default)
+                                default_pix_fmt = hwaccels[i].pix_fmt;
                             break;
                         }
                     }
@@ -837,7 +840,7 @@ static void add_input_streams(OptionsContext *o, AVFormatContext *ic)
                            "format: %s", hwaccel_output_format);
                 }
             } else {
-                ist->hwaccel_output_format = AV_PIX_FMT_NONE;
+                ist->hwaccel_output_format = default_pix_fmt;
             }
 
             ist->hwaccel_pix_fmt = AV_PIX_FMT_NONE;

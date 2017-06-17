@@ -76,6 +76,7 @@ typedef struct HWAccel {
     enum HWAccelID id;
     enum AVPixelFormat pix_fmt;
     enum AVHWDeviceType device_type;
+    int pix_fmt_is_default;
 } HWAccel;
 
 typedef struct HWDevice {
