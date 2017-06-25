@@ -68,7 +68,7 @@ err_out:
     return err;
 }
 
-int qsv_init(AVCodecContext *s)
+int qsv_init(const HWAccel *hwaccel, AVCodecContext *s)
 {
     InputStream *ist = s->opaque;
     AVHWFramesContext *frames_ctx;

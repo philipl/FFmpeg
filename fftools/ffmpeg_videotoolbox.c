@@ -113,7 +113,7 @@ static void videotoolbox_uninit(AVCodecContext *s)
     av_freep(&ist->hwaccel_ctx);
 }
 
-int videotoolbox_init(AVCodecContext *s)
+int videotoolbox_init(const HWAccel *hwaccel, AVCodecContext *s)
 {
     InputStream *ist = s->opaque;
     int loglevel = (ist->hwaccel_id == HWACCEL_AUTO) ? AV_LOG_VERBOSE : AV_LOG_ERROR;

@@ -375,11 +375,14 @@ fail:
     return err;
 }
 
-int hwaccel_decode_init(AVCodecContext *avctx)
+int hwaccel_decode_init(const HWAccel *hwaccel, AVCodecContext *avctx)
 {
     InputStream *ist = avctx->opaque;
 
     ist->hwaccel_retrieve_data = &hwaccel_retrieve_data;
+    if (hwaccel->is_dummy && ist->hwaccel_output_format == AV_PIX_FMT_NONE) {
+        ist->hwaccel_output_format = hwaccel->pix_fmt;
+    }
 
     return 0;
 }

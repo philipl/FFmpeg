@@ -68,27 +68,33 @@
 const HWAccel hwaccels[] = {
 #if HAVE_VDPAU_X11
     { "vdpau", hwaccel_decode_init, HWACCEL_VDPAU, AV_PIX_FMT_VDPAU,
-      AV_HWDEVICE_TYPE_VDPAU },
+      AV_HWDEVICE_TYPE_VDPAU,
+      .is_dummy = 0 },
 #endif
 #if CONFIG_D3D11VA
     { "d3d11va", hwaccel_decode_init, HWACCEL_D3D11VA, AV_PIX_FMT_D3D11,
-      AV_HWDEVICE_TYPE_D3D11VA },
+      AV_HWDEVICE_TYPE_D3D11VA,
+      .is_dummy = 0 },
 #endif
 #if CONFIG_DXVA2
     { "dxva2", hwaccel_decode_init, HWACCEL_DXVA2, AV_PIX_FMT_DXVA2_VLD,
-      AV_HWDEVICE_TYPE_DXVA2 },
+      AV_HWDEVICE_TYPE_DXVA2,
+      .is_dummy = 0 },
 #endif
 #if CONFIG_VIDEOTOOLBOX
     { "videotoolbox",   videotoolbox_init,   HWACCEL_VIDEOTOOLBOX,   AV_PIX_FMT_VIDEOTOOLBOX,
-      AV_HWDEVICE_TYPE_NONE },
+      AV_HWDEVICE_TYPE_NONE,
+      .is_dummy = 0 },
 #endif
 #if CONFIG_LIBMFX
     { "qsv",   qsv_init,   HWACCEL_QSV,   AV_PIX_FMT_QSV,
-      AV_HWDEVICE_TYPE_NONE },
+      AV_HWDEVICE_TYPE_NONE,
+      .is_dummy = 0 },
 #endif
 #if CONFIG_VAAPI
     { "vaapi", hwaccel_decode_init, HWACCEL_VAAPI, AV_PIX_FMT_VAAPI,
-      AV_HWDEVICE_TYPE_VAAPI },
+      AV_HWDEVICE_TYPE_VAAPI,
+      .is_dummy = 0 },
 #endif
 #if CONFIG_NVDEC
     { "nvdec", hwaccel_decode_init, HWACCEL_NVDEC, AV_PIX_FMT_CUDA,
@@ -96,7 +102,8 @@ const HWAccel hwaccels[] = {
 #endif
 #if CONFIG_CUVID
     { "cuvid", hwaccel_decode_init, HWACCEL_CUVID, AV_PIX_FMT_CUDA,
-      AV_HWDEVICE_TYPE_CUDA },
+      AV_HWDEVICE_TYPE_CUDA,
+      .is_dummy = 1 },
 #endif
     { 0 },
 };

@@ -71,13 +71,20 @@ enum HWAccelID {
     HWACCEL_NVDEC,
 };
 
-typedef struct HWAccel {
+typedef struct HWAccel HWAccel;
+
+struct HWAccel {
     const char *name;
-    int (*init)(AVCodecContext *s);
+    int (*init)(const HWAccel *hwaccel, AVCodecContext *s);
     enum HWAccelID id;
     enum AVPixelFormat pix_fmt;
     enum AVHWDeviceType device_type;
-} HWAccel;
+    /*
+     * A dummy hwaccel is one which maps to a separate decoder rather
+     * than plugging into a standard decoder
+     */
+    int is_dummy;
+};
 
 typedef struct HWDevice {
     char *name;
@@ -662,8 +669,8 @@ int ifilter_parameters_from_frame(InputFilter *ifilter, const AVFrame *frame);
 
 int ffmpeg_parse_options(int argc, char **argv);
 
-int videotoolbox_init(AVCodecContext *s);
-int qsv_init(AVCodecContext *s);
+int videotoolbox_init(const HWAccel *hwaccel, AVCodecContext *s);
+int qsv_init(const HWAccel *hwaccel, AVCodecContext *s);
 
 HWDevice *hw_device_get_by_name(const char *name);
 int hw_device_init_from_string(const char *arg, HWDevice **dev);
@@ -672,6 +679,6 @@ void hw_device_free_all(void);
 int hw_device_setup_for_decode(InputStream *ist);
 int hw_device_setup_for_encode(OutputStream *ost);
 
-int hwaccel_decode_init(AVCodecContext *avctx);
+int hwaccel_decode_init(const HWAccel *hwaccel, AVCodecContext *avctx);
 
 #endif /* FFTOOLS_FFMPEG_H */

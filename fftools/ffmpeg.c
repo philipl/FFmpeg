@@ -2811,7 +2811,7 @@ static enum AVPixelFormat get_format(AVCodecContext *s, const enum AVPixelFormat
             (ist->hwaccel_id != HWACCEL_AUTO && ist->hwaccel_id != hwaccel->id))
             continue;
 
-        ret = hwaccel->init(s);
+        ret = hwaccel->init(hwaccel, s);
         if (ret < 0) {
             if (ist->hwaccel_id == hwaccel->id) {
                 av_log(NULL, AV_LOG_FATAL,
