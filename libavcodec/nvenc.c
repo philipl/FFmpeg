@@ -41,8 +41,10 @@ const enum AVPixelFormat ff_nvenc_pix_fmts[] = {
     AV_PIX_FMT_NV12,
     AV_PIX_FMT_P010,
     AV_PIX_FMT_YUV444P,
-    AV_PIX_FMT_P016,      // Truncated to 10bits
-    AV_PIX_FMT_YUV444P16, // Truncated to 10bits
+    AV_PIX_FMT_P016,          // Truncated to 10bits
+    AV_PIX_FMT_YUV444P10_MSB,
+    AV_PIX_FMT_YUV444P12_MSB, // Truncated to 10bits
+    AV_PIX_FMT_YUV444P16,     // Truncated to 10bits
     AV_PIX_FMT_0RGB32,
     AV_PIX_FMT_0BGR32,
     AV_PIX_FMT_CUDA,
@@ -52,11 +54,15 @@ const enum AVPixelFormat ff_nvenc_pix_fmts[] = {
     AV_PIX_FMT_NONE
 };
 
-#define IS_10BIT(pix_fmt)  (pix_fmt == AV_PIX_FMT_P010    || \
-                            pix_fmt == AV_PIX_FMT_P016    || \
+#define IS_10BIT(pix_fmt)  (pix_fmt == AV_PIX_FMT_P010          || \
+                            pix_fmt == AV_PIX_FMT_P016          || \
+                            pix_fmt == AV_PIX_FMT_YUV444P10_MSB || \
+                            pix_fmt == AV_PIX_FMT_YUV444P12_MSB || \
                             pix_fmt == AV_PIX_FMT_YUV444P16)
 
-#define IS_YUV444(pix_fmt) (pix_fmt == AV_PIX_FMT_YUV444P || \
+#define IS_YUV444(pix_fmt) (pix_fmt == AV_PIX_FMT_YUV444P       || \
+                            pix_fmt == AV_PIX_FMT_YUV444P10_MSB || \
+                            pix_fmt == AV_PIX_FMT_YUV444P12_MSB || \
                             pix_fmt == AV_PIX_FMT_YUV444P16)
 
 static const struct {
@@ -1263,6 +1269,8 @@ static NV_ENC_BUFFER_FORMAT nvenc_map_buffer_format(enum AVPixelFormat pix_fmt)
         return NV_ENC_BUFFER_FORMAT_YUV420_10BIT;
     case AV_PIX_FMT_YUV444P:
         return NV_ENC_BUFFER_FORMAT_YUV444_PL;
+    case AV_PIX_FMT_YUV444P10_MSB:
+    case AV_PIX_FMT_YUV444P12_MSB:
     case AV_PIX_FMT_YUV444P16:
         return NV_ENC_BUFFER_FORMAT_YUV444_10BIT;
     case AV_PIX_FMT_0RGB32:

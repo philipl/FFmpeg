@@ -46,6 +46,7 @@ version 4.1:
 - pcm vidc decoder and encoder
 - (a)graphmonitor filter
 - yadif_cuda filter
+- Support for HEVC 4:4:4 content in nvdec/nvenc/cuviddec
 
 
 version 4.0:
