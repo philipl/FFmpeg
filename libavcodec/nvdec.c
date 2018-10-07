@@ -34,6 +34,9 @@
 #include "nvdec.h"
 #include "internal.h"
 
+#define NVDEC_FORMAT_YUV444P 2
+#define NVDEC_FORMAT_YUV444P16 3
+
 typedef struct NVDECDecoder {
     CUvideodecoder decoder;
 
@@ -277,7 +280,8 @@ int ff_nvdec_decode_init(AVCodecContext *avctx)
 
     CUVIDDECODECREATEINFO params = { 0 };
 
-    int cuvid_codec_type, cuvid_chroma_format;
+    cudaVideoSurfaceFormat output_format;
+    int cuvid_codec_type, cuvid_chroma_format, chroma_444;
     int ret = 0;
 
     sw_desc = av_pix_fmt_desc_get(avctx->sw_pix_fmt);
@@ -295,11 +299,27 @@ int ff_nvdec_decode_init(AVCodecContext *avctx)
         av_log(avctx, AV_LOG_ERROR, "Unsupported chroma format\n");
         return AVERROR(ENOSYS);
     }
+    chroma_444 = cuvid_chroma_format == cudaVideoChromaFormat_444;
 
     if (!avctx->hw_frames_ctx) {
         ret = ff_decode_get_hw_frames_ctx(avctx, AV_HWDEVICE_TYPE_CUDA);
         if (ret < 0)
             return ret;
+    }
+
+    switch (sw_desc->comp[0].depth) {
+    case 8:
+        output_format = chroma_444 ? NVDEC_FORMAT_YUV444P :
+                                     cudaVideoSurfaceFormat_NV12;
+        break;
+    case 10:
+    case 12:
+        output_format = chroma_444 ? NVDEC_FORMAT_YUV444P16 :
+                                     cudaVideoSurfaceFormat_P016;
+        break;
+    default:
+        av_log(avctx, AV_LOG_ERROR, "Unsupported bit depth\n");
+        return AVERROR(ENOSYS);
     }
 
     frames_ctx = (AVHWFramesContext*)avctx->hw_frames_ctx->data;
@@ -309,8 +329,7 @@ int ff_nvdec_decode_init(AVCodecContext *avctx)
     params.ulTargetWidth       = avctx->coded_width;
     params.ulTargetHeight      = avctx->coded_height;
     params.bitDepthMinus8      = sw_desc->comp[0].depth - 8;
-    params.OutputFormat        = params.bitDepthMinus8 ?
-                                 cudaVideoSurfaceFormat_P016 : cudaVideoSurfaceFormat_NV12;
+    params.OutputFormat        = output_format;
     params.CodecType           = cuvid_codec_type;
     params.ChromaFormat        = cuvid_chroma_format;
     params.ulNumDecodeSurfaces = frames_ctx->initial_pool_size;
@@ -392,6 +411,8 @@ static int nvdec_retrieve_data(void *logctx, AVFrame *frame)
     NVDECFrame        *cf = (NVDECFrame*)fdd->hwaccel_priv;
     NVDECDecoder *decoder = (NVDECDecoder*)cf->decoder_ref->data;
 
+    AVHWFramesContext *hwctx = (AVHWFramesContext *)frame->hw_frames_ctx->data;
+
     CUVIDPROCPARAMS vpp = { 0 };
     NVDECFrame *unmap_data = NULL;
 
@@ -401,6 +422,7 @@ static int nvdec_retrieve_data(void *logctx, AVFrame *frame)
 
     unsigned int pitch, i;
     unsigned int offset = 0;
+    int shift_h = 0, shift_v = 0;
     int ret = 0;
 
     vpp.progressive_frame = 1;
@@ -437,10 +459,11 @@ static int nvdec_retrieve_data(void *logctx, AVFrame *frame)
     unmap_data->idx_ref = av_buffer_ref(cf->idx_ref);
     unmap_data->decoder_ref = av_buffer_ref(cf->decoder_ref);
 
+    av_pix_fmt_get_chroma_sub_sample(hwctx->sw_format, &shift_h, &shift_v);
     for (i = 0; frame->linesize[i]; i++) {
         frame->data[i] = (uint8_t*)(devptr + offset);
         frame->linesize[i] = pitch;
-        offset += pitch * (frame->height >> (i ? 1 : 0));
+        offset += pitch * (frame->height >> (i ? shift_v : 0));
     }
 
     goto finish;
@@ -580,7 +603,7 @@ int ff_nvdec_frame_params(AVCodecContext *avctx,
 {
     AVHWFramesContext *frames_ctx = (AVHWFramesContext*)hw_frames_ctx->data;
     const AVPixFmtDescriptor *sw_desc;
-    int cuvid_codec_type, cuvid_chroma_format;
+    int cuvid_codec_type, cuvid_chroma_format, chroma_444;
 
     sw_desc = av_pix_fmt_desc_get(avctx->sw_pix_fmt);
     if (!sw_desc)
@@ -597,6 +620,7 @@ int ff_nvdec_frame_params(AVCodecContext *avctx,
         av_log(avctx, AV_LOG_VERBOSE, "Unsupported chroma format\n");
         return AVERROR(EINVAL);
     }
+    chroma_444 = cuvid_chroma_format == cudaVideoChromaFormat_444;
 
     frames_ctx->format            = AV_PIX_FMT_CUDA;
     frames_ctx->width             = (avctx->coded_width + 1) & ~1;
@@ -615,13 +639,13 @@ int ff_nvdec_frame_params(AVCodecContext *avctx,
 
     switch (sw_desc->comp[0].depth) {
     case 8:
-        frames_ctx->sw_format = AV_PIX_FMT_NV12;
+        frames_ctx->sw_format = chroma_444 ? AV_PIX_FMT_YUV444P : AV_PIX_FMT_NV12;
         break;
     case 10:
-        frames_ctx->sw_format = AV_PIX_FMT_P010;
+        frames_ctx->sw_format = chroma_444 ? AV_PIX_FMT_YUV444P10_MSB : AV_PIX_FMT_P010;
         break;
     case 12:
-        frames_ctx->sw_format = AV_PIX_FMT_P016;
+        frames_ctx->sw_format = chroma_444 ? AV_PIX_FMT_YUV444P12_MSB : AV_PIX_FMT_P016;
         break;
     default:
         return AVERROR(EINVAL);
