@@ -340,6 +340,11 @@ enum AVPixelFormat {
     AV_PIX_FMT_GRAYF32BE,  ///< IEEE-754 single precision Y, 32bpp, big-endian
     AV_PIX_FMT_GRAYF32LE,  ///< IEEE-754 single precision Y, 32bpp, little-endian
 
+    AV_PIX_FMT_YUV444P10LE_MSB,  ///< planar YUV 4:4:4, 30bpp, (1 Cr & Cb sample per 1x1 Y samples), MSB packed, little-endian
+    AV_PIX_FMT_YUV444P10BE_MSB,  ///< planar YUV 4:4:4, 30bpp, (1 Cr & Cb sample per 1x1 Y samples), MSB packed, big-endian
+    AV_PIX_FMT_YUV444P12LE_MSB,  ///< planar YUV 4:4:4, 36bpp, (1 Cr & Cb sample per 1x1 Y samples), MSB packed, little-endian
+    AV_PIX_FMT_YUV444P12BE_MSB,  ///< planar YUV 4:4:4, 36bpp, (1 Cr & Cb sample per 1x1 Y samples), MSB packed, big-endian
+
     AV_PIX_FMT_NB         ///< number of pixel formats, DO NOT USE THIS if you want to link with shared libav* because the number of formats might differ between versions
 };
 
@@ -390,6 +395,9 @@ enum AVPixelFormat {
 #define AV_PIX_FMT_YUV420P16 AV_PIX_FMT_NE(YUV420P16BE, YUV420P16LE)
 #define AV_PIX_FMT_YUV422P16 AV_PIX_FMT_NE(YUV422P16BE, YUV422P16LE)
 #define AV_PIX_FMT_YUV444P16 AV_PIX_FMT_NE(YUV444P16BE, YUV444P16LE)
+
+#define AV_PIX_FMT_YUV444P10_MSB AV_PIX_FMT_NE(YUV444P10BE_MSB, YUV444P10LE_MSB)
+#define AV_PIX_FMT_YUV444P12_MSB AV_PIX_FMT_NE(YUV444P12BE_MSB, YUV444P12LE_MSB)
 
 #define AV_PIX_FMT_GBRP9     AV_PIX_FMT_NE(GBRP9BE ,    GBRP9LE)
 #define AV_PIX_FMT_GBRP10    AV_PIX_FMT_NE(GBRP10BE,    GBRP10LE)
