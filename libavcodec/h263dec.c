@@ -503,9 +503,11 @@ retry:
     }
 
     if (!s->context_initialized) {
+        ff_set_dimensions(avctx, s->width, s->height);
         avctx->pix_fmt = h263_get_format(avctx);
         if ((ret = ff_mpv_common_init(s)) < 0)
             return ret;
+        s->context_reinit = 1;
     }
 
     avctx->has_b_frames = !s->low_delay;

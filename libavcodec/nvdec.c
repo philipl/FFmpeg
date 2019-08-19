@@ -68,6 +68,7 @@ static int map_avcodec_id(enum AVCodecID id)
 #if CONFIG_AV1_NVDEC_HWACCEL
     case AV_CODEC_ID_AV1:        return cudaVideoCodec_AV1;
 #endif
+    case AV_CODEC_ID_H263:       return cudaVideoCodec_MPEG4;
     case AV_CODEC_ID_H264:       return cudaVideoCodec_H264;
     case AV_CODEC_ID_HEVC:       return cudaVideoCodec_HEVC;
     case AV_CODEC_ID_MJPEG:      return cudaVideoCodec_JPEG;

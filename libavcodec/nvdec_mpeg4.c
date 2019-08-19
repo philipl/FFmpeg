@@ -29,17 +29,26 @@
 
 static int nvdec_mpeg4_start_frame(AVCodecContext *avctx, const uint8_t *buffer, uint32_t size)
 {
-    Mpeg4DecContext *m = avctx->priv_data;
-    MpegEncContext *s = &m->m;
+    Mpeg4DecContext *m;
+    MpegEncContext *s;
 
     NVDECContext      *ctx = avctx->internal->hwaccel_priv_data;
     CUVIDPICPARAMS     *pp = &ctx->pic_params;
     CUVIDMPEG4PICPARAMS *ppc = &pp->CodecSpecific.mpeg4;
     FrameDecodeData *fdd;
     NVDECFrame *cf;
-    AVFrame *cur_frame = s->current_picture.f;
+    AVFrame *cur_frame;
 
     int ret, i;
+
+    if (avctx->codec->id == AV_CODEC_ID_MPEG4) {
+        m = avctx->priv_data;
+        s = &m->m;
+    } else {
+        s = avctx->priv_data;
+    }
+
+    cur_frame = s->current_picture.f;
 
     ret = ff_nvdec_start_frame(avctx, cur_frame);
     if (ret < 0)
@@ -64,9 +73,11 @@ static int nvdec_mpeg4_start_frame(AVCodecContext *avctx, const uint8_t *buffer,
 
             .video_object_layer_width     = s->width,
             .video_object_layer_height    = s->height,
-            .vop_time_increment_bitcount  = m->time_increment_bits,
+            .vop_time_increment_bitcount  = avctx->codec->id == AV_CODEC_ID_MPEG4 ?
+                                            m->time_increment_bits : 0,
             .top_field_first              = s->top_field_first,
-            .resync_marker_disable        = !m->resync_marker,
+            .resync_marker_disable        = avctx->codec->id == AV_CODEC_ID_MPEG4 ?
+                                            !m->resync_marker : 0,
             .quant_type                   = s->mpeg_quant,
             .quarter_sample               = s->quarter_sample,
             .short_video_header           = avctx->codec->id == AV_CODEC_ID_H263,
@@ -82,7 +93,8 @@ static int nvdec_mpeg4_start_frame(AVCodecContext *avctx, const uint8_t *buffer,
             .trd                          = { s->pp_time, s->pp_field_time >> 1 },
             .trb                          = { s->pb_time, s->pb_field_time >> 1 },
 
-            .gmc_enabled                  = s->pict_type == AV_PICTURE_TYPE_S &&
+            .gmc_enabled                  = avctx->codec->id == AV_CODEC_ID_MPEG4 &&
+                                            s->pict_type == AV_PICTURE_TYPE_S &&
                                             m->vol_sprite_usage == GMC_SPRITE,
         }
     };
