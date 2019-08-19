@@ -528,9 +528,11 @@ retry:
     }
 
     if (!s->context_initialized) {
+        ff_set_dimensions(avctx, s->width, s->height);
         avctx->pix_fmt = h263_get_format(avctx);
         if ((ret = ff_mpv_common_init(s)) < 0)
             return ret;
+        s->context_reinit = 1;
     }
 
     if (!s->current_picture_ptr || s->current_picture_ptr->f->data[0]) {
