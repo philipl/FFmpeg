@@ -163,6 +163,7 @@ OBJS-$(CONFIG_ATADENOISE_FILTER)             += vf_atadenoise.o
 OBJS-$(CONFIG_AVGBLUR_FILTER)                += vf_avgblur.o
 OBJS-$(CONFIG_AVGBLUR_OPENCL_FILTER)         += vf_avgblur_opencl.o opencl.o \
                                                 opencl/avgblur.o boxblur.o
+OBJS-$(CONFIG_AVGBLUR_VULKAN_FILTER)         += vf_avgblur_vulkan.o vulkan.o
 OBJS-$(CONFIG_BBOX_FILTER)                   += bbox.o vf_bbox.o
 OBJS-$(CONFIG_BENCH_FILTER)                  += f_bench.o
 OBJS-$(CONFIG_BILATERAL_FILTER)              += vf_bilateral.o
@@ -175,6 +176,7 @@ OBJS-$(CONFIG_BOXBLUR_FILTER)                += vf_boxblur.o boxblur.o
 OBJS-$(CONFIG_BOXBLUR_OPENCL_FILTER)         += vf_avgblur_opencl.o opencl.o \
                                                 opencl/avgblur.o boxblur.o
 OBJS-$(CONFIG_BWDIF_FILTER)                  += vf_bwdif.o yadif_common.o
+OBJS-$(CONFIG_CHROMABER_VULKAN_FILTER)       += vf_chromaber_vulkan.o vulkan.o
 OBJS-$(CONFIG_CHROMAHOLD_FILTER)             += vf_chromakey.o
 OBJS-$(CONFIG_CHROMAKEY_FILTER)              += vf_chromakey.o
 OBJS-$(CONFIG_CHROMASHIFT_FILTER)            += vf_chromashift.o
@@ -322,6 +324,7 @@ OBJS-$(CONFIG_OVERLAY_FILTER)                += vf_overlay.o framesync.o
 OBJS-$(CONFIG_OVERLAY_OPENCL_FILTER)         += vf_overlay_opencl.o opencl.o \
                                                 opencl/overlay.o framesync.o
 OBJS-$(CONFIG_OVERLAY_QSV_FILTER)            += vf_overlay_qsv.o framesync.o
+OBJS-$(CONFIG_OVERLAY_VULKAN_FILTER)         += vf_overlay_vulkan.o vulkan.o
 OBJS-$(CONFIG_OWDENOISE_FILTER)              += vf_owdenoise.o
 OBJS-$(CONFIG_PAD_FILTER)                    += vf_pad.o
 OBJS-$(CONFIG_PALETTEGEN_FILTER)             += vf_palettegen.o
@@ -364,6 +367,7 @@ OBJS-$(CONFIG_SCALE_CUDA_FILTER)             += vf_scale_cuda.o vf_scale_cuda.pt
 OBJS-$(CONFIG_SCALE_NPP_FILTER)              += vf_scale_npp.o scale_eval.o
 OBJS-$(CONFIG_SCALE_QSV_FILTER)              += vf_scale_qsv.o
 OBJS-$(CONFIG_SCALE_VAAPI_FILTER)            += vf_scale_vaapi.o scale_eval.o vaapi_vpp.o
+OBJS-$(CONFIG_SCALE_VULKAN_FILTER)           += vf_scale_vulkan.o vulkan.o
 OBJS-$(CONFIG_SCALE2REF_FILTER)              += vf_scale.o scale_eval.o
 OBJS-$(CONFIG_SCROLL_FILTER)                 += vf_scroll.o
 OBJS-$(CONFIG_SELECT_FILTER)                 += f_select.o
@@ -505,6 +509,8 @@ OBJS-$(CONFIG_SHARED)                        += log2_tab.o
 SKIPHEADERS-$(CONFIG_QSVVPP)                 += qsvvpp.h
 SKIPHEADERS-$(CONFIG_OPENCL)                 += opencl.h
 SKIPHEADERS-$(CONFIG_VAAPI)                  += vaapi_vpp.h
+
+OBJS-$(CONFIG_LIBGLSLANG)                    += glslang.o
 
 TOOLS     = graph2dot
 TESTPROGS = drawutils filtfmts formats integral
