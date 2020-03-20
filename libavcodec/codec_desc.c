@@ -1810,6 +1810,13 @@ static const AVCodecDescriptor codec_descriptors[] = {
         .props     = AV_CODEC_PROP_INTRA_ONLY | AV_CODEC_PROP_LOSSLESS,
     },
     {
+        .id        = AV_CODEC_ID_BINKVIDEO2,
+        .type      = AVMEDIA_TYPE_VIDEO,
+        .name      = "binkvideo2",
+        .long_name = NULL_IF_CONFIG_SMALL("Bink video 2"),
+        .props     = AV_CODEC_PROP_LOSSY,
+    },
+    {
         .id        = AV_CODEC_ID_MOBICLIP,
         .type      = AVMEDIA_TYPE_VIDEO,
         .name      = "mobiclip",
