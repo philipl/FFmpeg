@@ -85,6 +85,7 @@ typedef struct H264POCContext {
     int delta_poc_bottom;
     int delta_poc[2];
     int frame_num;
+    int idr_pic_id;
     int prev_poc_msb;           ///< poc_msb of the last reference pic for POC type 0
     int prev_poc_lsb;           ///< poc_lsb of the last reference pic for POC type 0
     int frame_num_offset;       ///< for POC type 2
