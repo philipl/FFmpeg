@@ -432,7 +432,7 @@ static inline int parse_nal_units(AVCodecParserContext *s,
             }
 
             if (nal.type == H264_NAL_IDR_SLICE)
-                get_ue_golomb_long(&nal.gb); /* idr_pic_id */
+                p->poc.idr_pic_id = get_ue_golomb_long(&nal.gb); /* idr_pic_id */
             if (sps->poc_type == 0) {
                 p->poc.poc_lsb = get_bits(&nal.gb, sps->log2_max_poc_lsb);
 
