@@ -2251,6 +2251,14 @@ typedef struct AVHWAccel {
      * For thread-safe hwaccels only.
      */
     int (*update_thread_context)(AVCodecContext *dst, const AVCodecContext *src);
+
+    /**
+     * Callback to free the hwaccel-specific frame data.
+     *
+     * @param avctx the codec context
+     * @param data the per-frame hardware accelerator private data to be freed.
+     */
+    void (*free_frame_priv)(void *avctx, uint8_t *data);
 } AVHWAccel;
 
 /**
