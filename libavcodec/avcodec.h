@@ -2242,6 +2242,14 @@ typedef struct AVHWAccel {
      * that avctx->hwaccel_priv_data is invalid.
      */
     int (*frame_params)(AVCodecContext *avctx, AVBufferRef *hw_frames_ctx);
+
+    /**
+     * Callback to free the hwaccel-specific frame data.
+     *
+     * @param avctx the codec context
+     * @param data the per-frame hardware accelerator private data to be freed.
+     */
+    void (*free_frame_priv)(AVCodecContext *avctx, void *data);
 } AVHWAccel;
 
 /**
