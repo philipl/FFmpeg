@@ -37,6 +37,7 @@ typedef enum FFVulkanExtensions {
     FF_VK_EXT_EXTERNAL_WIN32_MEMORY  = 1ULL <<  6, /* VK_KHR_external_memory_win32 */
     FF_VK_EXT_EXTERNAL_WIN32_SEM     = 1ULL <<  7, /* VK_KHR_external_semaphore_win32 */
 #endif
+    FF_VK_EXT_SYNC2                  = 1ULL <<  8, /* VK_KHR_synchronization2 */
 
     FF_VK_EXT_NO_FLAG                = 1ULL << 31,
 } FFVulkanExtensions;
@@ -145,7 +146,10 @@ typedef enum FFVulkanExtensions {
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              UpdateDescriptorSetWithTemplate)         \
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              CreateDescriptorUpdateTemplate)          \
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              DestroyDescriptorUpdateTemplate)         \
-                                                                                         \
+                                                                                           \
+    /* sync2 */                                                                            \
+    MACRO(1, 1, FF_VK_EXT_SYNC2,                CmdPipelineBarrier2KHR)                    \
+                                                                                           \
     /* Pipeline */                                                                       \
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              CreatePipelineLayout)                    \
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              DestroyPipelineLayout)                   \
