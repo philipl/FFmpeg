@@ -3004,6 +3004,11 @@ static int get_pix_fmt_score(enum AVPixelFormat dst_pix_fmt,
     if ((ret = get_pix_fmt_depth(&dst_min_depth, &dst_max_depth, dst_pix_fmt)) < 0)
         return -3;
 
+    // Favour formats where bit depth exactly matches. If all other scoring is
+    // equal, we'd rather use a lower bit depth that matches the source.
+    if (src_min_depth != dst_min_depth || src_max_depth != dst_max_depth)
+        score -= 512;
+
     src_color = get_color_type(src_desc);
     dst_color = get_color_type(dst_desc);
     if (dst_pix_fmt == AV_PIX_FMT_PAL8)
