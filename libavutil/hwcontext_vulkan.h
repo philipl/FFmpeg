@@ -160,9 +160,7 @@ typedef enum AVVkFrameFlags {
      * device and tiling during av_hwframe_ctx_init(). */
     AV_VK_FRAME_FLAG_NONE              = (1ULL << 0),
 
-    /* Image planes will be allocated in a single VkDeviceMemory, rather
-     * than as per-plane VkDeviceMemory allocations. Required for exporting
-     * to VAAPI on Intel devices. */
+    /* DEPRECATED: does nothing. */
     AV_VK_FRAME_FLAG_CONTIGUOUS_MEMORY = (1ULL << 1),
 } AVVkFrameFlags;
 
