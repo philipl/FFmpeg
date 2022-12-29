@@ -21,6 +21,8 @@
 
 #define VK_NO_PROTOTYPES
 
+#include <stdatomic.h>
+
 #include "pixdesc.h"
 #include "bprint.h"
 #include "hwcontext.h"
@@ -100,8 +102,6 @@ typedef struct FFVkBuffer {
 typedef struct FFVkQueueFamilyCtx {
     int queue_family;
     int nb_queues;
-    int cur_queue;
-    int actual_queues;
 } FFVkQueueFamilyCtx;
 
 typedef struct FFVulkanPipeline {
@@ -143,70 +143,87 @@ typedef struct FFVulkanPipeline {
     VkDescriptorPoolSize *pool_size_desc;
 } FFVulkanPipeline;
 
-typedef struct FFVkQueueCtx {
-    VkFence fence;
-    VkQueue queue;
+typedef struct FFVkExecContext {
+    const struct FFVkExecPool *parent;
 
-    int synchronous;
-    int submitted;
+    /* Queue for the execution context */
+    VkQueue queue;
+    int qf;
+    int qi;
+
+    /* Command buffer for the context */
+    VkCommandBuffer buf;
+
+    /* Fence for the command buffer */
+    VkFence fence;
+
+    void *query_data;
+    int query_idx;
 
     /* Buffer dependencies */
     AVBufferRef **buf_deps;
     int nb_buf_deps;
-    int buf_deps_alloc_size;
+    unsigned int buf_deps_alloc_size;
 
     /* Frame dependencies */
-    AVFrame **frame_deps;
+    AVBufferRef **frame_deps;
+    unsigned int frame_deps_alloc_size;
     int nb_frame_deps;
-    int frame_deps_alloc_size;
-} FFVkQueueCtx;
-
-typedef struct FFVkExecContext {
-    FFVkQueueFamilyCtx *qf;
-
-    VkCommandPool pool;
-    VkCommandBuffer *bufs;
-    FFVkQueueCtx *queues;
-
-    struct {
-        int           idx;
-        VkQueryPool   pool;
-        uint8_t      *data;
-
-        int           nb_queries;
-        int           nb_results;
-        int           nb_statuses;
-        int           elem_64bits;
-        size_t        data_per_queue;
-        int           status_stride;
-    } query;
-
-    AVBufferRef ***deps;
-    int *nb_deps;
-    int *dep_alloc_size;
-
-    FFVulkanPipeline *bound_pl;
 
     VkSemaphore *sem_wait;
-    int sem_wait_alloc; /* Allocated sem_wait */
+    unsigned int sem_wait_alloc; /* Allocated sem_wait */
     int sem_wait_cnt;
 
     uint64_t *sem_wait_val;
-    int sem_wait_val_alloc;
+    unsigned int sem_wait_val_alloc;
 
     VkPipelineStageFlagBits *sem_wait_dst;
-    int sem_wait_dst_alloc; /* Allocated sem_wait_dst */
+    unsigned int sem_wait_dst_alloc; /* Allocated sem_wait_dst */
 
     VkSemaphore *sem_sig;
-    int sem_sig_alloc; /* Allocated sem_sig */
+    unsigned int sem_sig_alloc; /* Allocated sem_sig */
     int sem_sig_cnt;
 
     uint64_t *sem_sig_val;
-    int sem_sig_val_alloc;
+    unsigned int sem_sig_val_alloc;
 
     uint64_t **sem_sig_val_dst;
-    int sem_sig_val_dst_alloc;
+    unsigned int sem_sig_val_dst_alloc;
+
+    uint8_t *frame_locked;
+    unsigned int frame_locked_alloc_size;
+
+    VkAccessFlagBits *access_dst;
+    unsigned int access_dst_alloc;
+
+    VkImageLayout *layout_dst;
+    unsigned int layout_dst_alloc;
+
+    uint32_t *queue_family_dst;
+    unsigned int queue_family_dst_alloc;
+
+    uint8_t *frame_update;
+    unsigned int frame_update_alloc_size;
 } FFVkExecContext;
+
+typedef struct FFVkExecPool {
+    FFVkQueueFamilyCtx *qf;
+    FFVkExecContext *contexts;
+    atomic_int_least64_t idx;
+
+    VkCommandPool cmd_buf_pool;
+    VkCommandBuffer *cmd_bufs;
+    int pool_size;
+
+    VkQueryPool query_pool;
+    void *query_data;
+    int query_results;
+    int query_statuses;
+    int query_64bit;
+    int query_status_stride;
+    int nb_queries;
+    size_t qd_size;
+} FFVkExecPool;
 
 typedef struct FFVulkanContext {
     const AVClass *class; /* Filters and encoders use this */
@@ -238,21 +255,6 @@ typedef struct FFVulkanContext {
     int                output_height;
     enum AVPixelFormat output_format;
     enum AVPixelFormat  input_format;
-
-    /* Samplers */
-    FFVkSampler **samplers;
-    int samplers_num;
-
-    /* Exec contexts */
-    FFVkExecContext **exec_ctx;
-    int exec_ctx_num;
-
-    /* Pipelines (each can have 1 shader of each type) */
-    FFVulkanPipeline **pipelines;
-    int pipelines_num;
-
-    void *scratch; /* Scratch memory used only in functions */
-    unsigned int scratch_size;
 } FFVulkanContext;
 
 /* Identity mapping - r = r, b = b, g = g, a = a */
@@ -264,244 +266,170 @@ extern const VkComponentMapping ff_comp_identity_map;
 const char *ff_vk_ret2str(VkResult res);
 
 /**
+ * Returns 1 if pixfmt is a usable RGB format.
+ */
+int ff_vk_mt_is_np_rgb(enum AVPixelFormat pix_fmt);
+
+/**
+ * Returns the format to use for images in shaders.
+ */
+const char *ff_vk_shader_rep_fmt(enum AVPixelFormat pixfmt);
+
+/**
  * Loads props/mprops/driver_props
  */
 int ff_vk_load_props(FFVulkanContext *s);
 
 /**
- * Returns 1 if the image is any sort of supported RGB
- */
-int ff_vk_mt_is_np_rgb(enum AVPixelFormat pix_fmt);
-
-/**
- * Gets the glsl format string for a pixel format
- */
-const char *ff_vk_shader_rep_fmt(enum AVPixelFormat pixfmt);
-
-/**
- * Setup the queue families from the hardware device context.
- * Necessary for image creation to work.
+ * Loads queue families into the main context.
+ * Chooses a QF and loads it into a context.
  */
 void ff_vk_qf_fill(FFVulkanContext *s);
-
-/**
- * Allocate device memory.
- */
-int ff_vk_alloc_mem(FFVulkanContext *s, VkMemoryRequirements *req,
-                    VkMemoryPropertyFlagBits req_flags, void *alloc_extension,
-                    VkMemoryPropertyFlagBits *mem_flags, VkDeviceMemory *mem);
-
-/**
- * Get a queue family index and the number of queues. nb is optional.
- */
-int ff_vk_qf_get_index(FFVulkanContext *s, VkQueueFlagBits dev_family, int *nb);
-
-/**
- * Initialize a queue family with a specific number of queues.
- * If nb_queues == 0, use however many queues the queue family has.
- */
 int ff_vk_qf_init(FFVulkanContext *s, FFVkQueueFamilyCtx *qf,
-                  VkQueueFlagBits dev_family, int nb_queues);
+                  VkQueueFlagBits dev_family);
 
 /**
- * Rotate through the queues in a queue family.
+ * Allocates/frees an execution pool.
  */
-int ff_vk_qf_rotate(FFVkQueueFamilyCtx *qf);
+int ff_vk_exec_pool_init(FFVulkanContext *s, FFVkQueueFamilyCtx *qf,
+                         FFVkExecPool *pool, int nb_contexts,
+                         int nb_queries, VkQueryType query_type, int query_64bit,
+                         const void *query_create_pnext);
+void ff_vk_exec_pool_free(FFVulkanContext *s, FFVkExecPool *pool);
 
 /**
- * Create a Vulkan sampler, will be auto-freed in ff_vk_filter_uninit()
+ * Retrieve an execution pool. Threadsafe.
  */
-FFVkSampler *ff_vk_init_sampler(FFVulkanContext *s, int unnorm_coords,
-                                VkFilter filt);
+FFVkExecContext *ff_vk_exec_get(FFVkExecPool *pool);
 
 /**
- * Create an imageview.
- * Guaranteed to remain alive until the queue submission has finished executing,
- * and will be destroyed after that.
+ * Explicitly wait on an execution to be finished.
+ * Starting via ff_vk_exec_start() also waits on it.
+ */
+
+/**
+ * Performs nb_queries queries and returns their results and statuses.
+ * Execution must have been waited on to produce valid results.
+ */
+VkResult ff_vk_exec_get_query(FFVulkanContext *s, FFVkExecContext *e,
+                              void **data, int64_t *status);
+
+/**
+ * Start/submit/wait an execution.
+ * ff_vk_exec_start() always waits on a submission, so using ff_vk_exec_wait()
+ * is not necessary (unless using it is just better).
+ */
+int ff_vk_exec_start(FFVulkanContext *s, FFVkExecContext *e);
+int ff_vk_exec_submit(FFVulkanContext *s, FFVkExecContext *e);
+void ff_vk_exec_wait(FFVulkanContext *s, FFVkExecContext *e);
+
+/**
+ * Execution dependency management.
+ * Can attach buffers to executions that will only be unref'd once the
+ * buffer has finished executing.
+ * Adding a frame dep will *lock the frame*, until either the dependencies
+ * are discarded, the execution is submitted, or a failure happens.
+ * update_frame will update the frame's properties before it is unlocked,
+ * only if submission was successful.
+ */
+int ff_vk_exec_add_dep_buf(FFVulkanContext *s, FFVkExecContext *e,
+                           AVBufferRef **deps, int nb_deps, int ref);
+int ff_vk_exec_add_dep_frame(FFVulkanContext *s, FFVkExecContext *e,
+                             AVBufferRef *vkfb, VkPipelineStageFlagBits in_wait_dst_flag);
+void ff_vk_exec_update_frame(FFVulkanContext *s, FFVkExecContext *e, AVBufferRef *vkfb,
+                             VkImageMemoryBarrier2 *bar);
+void ff_vk_exec_discard_deps(FFVulkanContext *s, FFVkExecContext *e);
+
+/**
+ * Create an imageview and add it as a dependency to an execution.
  */
 int ff_vk_create_imageview(FFVulkanContext *s, FFVkExecContext *e,
                            VkImageView *v, VkImage img, VkFormat fmt,
                            const VkComponentMapping map);
 
 /**
- * Define a push constant for a given stage into a pipeline.
- * Must be called before the pipeline layout has been initialized.
+ * Memory/buffer/image allocation helpers.
  */
-int ff_vk_add_push_constant(FFVulkanPipeline *pl, int offset, int size,
-                            VkShaderStageFlagBits stage);
-
-/**
- * Inits a pipeline. Everything in it will be auto-freed when calling
- * ff_vk_filter_uninit().
- */
-FFVulkanPipeline *ff_vk_create_pipeline(FFVulkanContext *s, FFVkQueueFamilyCtx *qf);
-
-/**
- * Inits a shader for a specific pipeline. Will be auto-freed on uninit.
- */
-FFVkSPIRVShader *ff_vk_init_shader(FFVulkanPipeline *pl, const char *name,
-                                   VkShaderStageFlags stage);
-
-/**
- * Writes the workgroup size for a shader.
- */
-void ff_vk_set_compute_shader_sizes(FFVkSPIRVShader *shd, int local_size[3]);
-
-/**
- * Adds a descriptor set to the shader and registers them in the pipeline.
- */
-int ff_vk_add_descriptor_set(FFVulkanContext *s, FFVulkanPipeline *pl,
-                             FFVkSPIRVShader *shd, FFVulkanDescriptorSetBinding *desc,
-                             int num, int only_print_to_shader);
-
-/**
- * Compiles the shader, entrypoint must be set to "main".
- */
-int ff_vk_compile_shader(FFVulkanContext *s, FFVkSPIRVShader *shd,
-                         const char *entrypoint);
-
-/**
- * Pretty print shader, mainly used by shader compilers.
- */
-void ff_vk_print_shader(void *ctx, FFVkSPIRVShader *shd, int prio);
-
-/**
- * Initializes the pipeline layout after all shaders and descriptor sets have
- * been finished.
- */
-int ff_vk_init_pipeline_layout(FFVulkanContext *s, FFVulkanPipeline *pl);
-
-/**
- * Initializes a compute pipeline. Will pick the first shader with the
- * COMPUTE flag set.
- */
-int ff_vk_init_compute_pipeline(FFVulkanContext *s, FFVulkanPipeline *pl);
-
-/**
- * Updates a descriptor set via the updaters defined.
- * Can be called immediately after pipeline creation, but must be called
- * at least once before queue submission.
- */
-void ff_vk_update_descriptor_set(FFVulkanContext *s, FFVulkanPipeline *pl,
-                                 int set_id);
-
-/**
- * Init an execution context for command recording and queue submission.
- * WIll be auto-freed on uninit.
- */
-int ff_vk_create_exec_ctx(FFVulkanContext *s, FFVkExecContext **ctx,
-                          FFVkQueueFamilyCtx *qf);
-
-/**
- * Create a query pool for a command context.
- * elem_64bits exists to troll driver devs for compliance. All results
- * and statuses returned should be 32 bits, unless this is set, then it's 64bits.
- */
-int ff_vk_create_exec_ctx_query_pool(FFVulkanContext *s, FFVkExecContext *e,
-                                     int nb_queries, VkQueryType type,
-                                     int elem_64bits, void *create_pnext);
-
-/**
- * Get results for query.
- * Returns the status of the query.
- * Sets *res to the status of the queries.
- */
-int ff_vk_get_exec_ctx_query_results(FFVulkanContext *s, FFVkExecContext *e,
-                                     int query_idx, void **data, int64_t *status);
-
-/**
- * Begin recording to the command buffer. Previous execution must have been
- * completed, which ff_vk_submit_exec_queue() will ensure.
- */
-int ff_vk_start_exec_recording(FFVulkanContext *s,  FFVkExecContext *e);
-
-/**
- * Add a command to bind the completed pipeline and its descriptor sets.
- * Must be called after ff_vk_start_exec_recording() and before submission.
- */
-void ff_vk_bind_pipeline_exec(FFVulkanContext *s, FFVkExecContext *e,
-                              FFVulkanPipeline *pl);
-
-/**
- * Updates push constants.
- * Must be called after binding a pipeline if any push constants were defined.
- */
-void ff_vk_update_push_exec(FFVulkanContext *s, FFVkExecContext *e,
-                            VkShaderStageFlagBits stage, int offset,
-                            size_t size, void *src);
-
-/**
- * Gets the command buffer to use for this submission from the exe context.
- */
-VkCommandBuffer ff_vk_get_exec_buf(FFVkExecContext *e);
-
-/**
- * Adds a generic AVBufferRef as a queue depenency.
- */
-int ff_vk_add_dep_exec_ctx(FFVulkanContext *s, FFVkExecContext *e,
-                           AVBufferRef **deps, int nb_deps);
-
-/**
- * Discards all queue dependencies
- */
-void ff_vk_discard_exec_deps(FFVkExecContext *e);
-
-/**
- * Adds a frame as a queue dependency. This also manages semaphore signalling.
- * Must be called before submission.
- */
-int ff_vk_add_exec_dep(FFVulkanContext *s, FFVkExecContext *e, AVFrame *frame,
-                       VkPipelineStageFlagBits in_wait_dst_flag);
-
-/**
- * Submits a command buffer to the queue for execution. Will not block.
- */
-int ff_vk_submit_exec_queue(FFVulkanContext *s, FFVkExecContext *e);
-
-/**
- * Wait on a command buffer's execution. Mainly useful for debugging and
- * development.
- */
-void ff_vk_wait_on_exec_ctx(FFVulkanContext *s, FFVkExecContext *e);
-
-/**
- * Create a VkBuffer with the specified parameters.
- */
+int ff_vk_alloc_mem(FFVulkanContext *s, VkMemoryRequirements *req,
+                    VkMemoryPropertyFlagBits req_flags, void *alloc_extension,
+                    VkMemoryPropertyFlagBits *mem_flags, VkDeviceMemory *mem);
 int ff_vk_create_buf(FFVulkanContext *s, FFVkBuffer *buf, size_t size,
                      void *pNext, void *alloc_pNext,
                      VkBufferUsageFlags usage, VkMemoryPropertyFlagBits flags);
 
 /**
- * Maps the buffer to userspace. Set invalidate to 1 if reading the contents
- * is necessary.
+ * Buffer management code.
  */
 int ff_vk_map_buffers(FFVulkanContext *s, FFVkBuffer *buf, uint8_t *mem[],
                       int nb_buffers, int invalidate);
-
-/**
- * Unmaps the buffer from userspace. Set flush to 1 to write and sync.
- */
 int ff_vk_unmap_buffers(FFVulkanContext *s, FFVkBuffer *buf, int nb_buffers,
                         int flush);
-
-/**
- * Frees a buffer.
- */
 void ff_vk_free_buf(FFVulkanContext *s, FFVkBuffer *buf);
 
-/**
- * Creates an image, allocates and binds memory in the given
- * idx value of the dst frame. If mem is non-NULL, then no memory will be
- * allocated, but instead the given memory will be bound to the image.
- */
-int ff_vk_image_create(FFVulkanContext *s, AVVkFrame *dst, int idx,
-                       int width, int height, VkFormat fmt, VkImageTiling tiling,
-                       VkImageUsageFlagBits usage, VkImageCreateFlags flags,
-                       void *create_pnext,
-                       VkDeviceMemory *mem, void *alloc_pnext);
+typedef struct FFVkPooledBuffer {
+    FFVkBuffer buf;
+    uint8_t *mem;
+} FFVkPooledBuffer;
+
+/** Initialize a pool and create AVBufferRefs containing FFVkPooledBuffer.
+ * Threadsafe to use. Buffers are automatically mapped on creation if
+ * VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT is set in mem_props. Users should
+ * synchronize access themselvesd. Mainly meant for device-local buffers. */
+int ff_vk_get_pooled_buffer(FFVulkanContext *ctx, AVBufferPool **buf_pool,
+                            AVBufferRef **buf, VkBufferUsageFlags usage,
+                            void *create_pNext, size_t size,
+                            VkMemoryPropertyFlagBits mem_props);
 
 /**
- * Frees the main Vulkan context.
+ * Sampler management.
+ */
+FFVkSampler *ff_vk_init_sampler(FFVulkanContext *s, FFVkSampler *sctx,
+                                int unnorm_coords, VkFilter filt);
+void ff_vk_sampler_free(FFVulkanContext *s, FFVkSampler *sctx);
+
+/**
+ * Shader management.
+ */
+int ff_vk_shader_init(FFVulkanPipeline *pl, FFVkSPIRVShader *shd, const char *name,
+                      VkShaderStageFlags stage);
+void ff_vk_shader_set_compute_sizes(FFVkSPIRVShader *shd, int local_size[3]);
+void ff_vk_shader_print(void *ctx, FFVkSPIRVShader *shd, int prio);
+int ff_vk_shader_compile(FFVulkanContext *s, FFVkSPIRVShader *shd,
+                         const char *entrypoint);
+void ff_vk_shader_free(FFVulkanContext *s, FFVkSPIRVShader *shd);
+
+/**
+ * Register a descriptor set.
+ * Update a descriptor set for execution.
+ */
+int ff_vk_add_descriptor_set(FFVulkanContext *s, FFVulkanPipeline *pl,
+                             FFVkSPIRVShader *shd, FFVulkanDescriptorSetBinding *desc,
+                             int num, int only_print_to_shader);
+void ff_vk_update_descriptor_set(FFVulkanContext *s, FFVulkanPipeline *pl,
+                                 int set_id);
+
+/**
+ * Add/update push constants for execution.
+ */
+int ff_vk_add_push_constant(FFVulkanPipeline *pl, int offset, int size,
+                            VkShaderStageFlagBits stage);
+void ff_vk_update_push_exec(FFVulkanContext *s, FFVkExecContext *e,
+                            FFVulkanPipeline *pl,
+                            VkShaderStageFlagBits stage,
+                            int offset, size_t size, void *src);
+
+/**
+ * Pipeline management.
+ */
+int ff_vk_init_compute_pipeline(FFVulkanContext *s, FFVulkanPipeline *pl,
+                                FFVkQueueFamilyCtx *qf);
+int ff_vk_init_pipeline_layout(FFVulkanContext *s, FFVulkanPipeline *pl);
+void ff_vk_pipeline_bind_exec(FFVulkanContext *s, FFVkExecContext *e,
+                              FFVulkanPipeline *pl);
+void ff_vk_pipeline_free(FFVulkanContext *s, FFVulkanPipeline *pl);
+
+/**
+ * Frees main context.
  */
 void ff_vk_uninit(FFVulkanContext *s);
 
