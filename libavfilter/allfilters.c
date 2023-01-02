@@ -374,6 +374,7 @@ extern const AVFilter ff_vf_noformat;
 extern const AVFilter ff_vf_noise;
 extern const AVFilter ff_vf_normalize;
 extern const AVFilter ff_vf_null;
+extern const AVFilter ff_vf_nvoffruc;
 extern const AVFilter ff_vf_ocr;
 extern const AVFilter ff_vf_ocv;
 extern const AVFilter ff_vf_oscilloscope;
