@@ -510,8 +510,8 @@ void ff_vk_exec_discard_deps(FFVulkanContext *s, FFVkExecContext *e)
             AVVkFrame *vkf = (AVVkFrame *)f->data[0];
             vkfc->unlock_frame(hwfc, vkf);
             e->frame_locked[j] = 0;
-            e->frame_update[j] = 0;
         }
+        e->frame_update[j] = 0;
         if (f->buf[0])
             av_frame_free(&e->frame_deps[j]);
     }
