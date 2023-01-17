@@ -1175,6 +1175,7 @@ static int av1_decode_frame(AVCodecContext *avctx, AVFrame *frame,
         switch (unit->type) {
         case AV1_OBU_SEQUENCE_HEADER:
             av_buffer_unref(&s->seq_ref);
+            av_buffer_unref(&s->hwaccel_params_buf);
             s->seq_ref = av_buffer_ref(unit->content_ref);
             if (!s->seq_ref) {
                 ret = AVERROR(ENOMEM);
@@ -1414,6 +1415,7 @@ static void av1_decode_flush(AVCodecContext *avctx)
 
     ff_cbs_flush(s->cbc);
 
+    av_buffer_unref(&s->hwaccel_params_buf);
     if (avctx->hwaccel && avctx->hwaccel->flush)
         avctx->hwaccel->flush(avctx);
 }
