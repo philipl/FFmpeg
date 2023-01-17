@@ -341,6 +341,8 @@ typedef struct H264Context {
     H264Picture cur_pic;
     H264Picture last_pic_for_ec;
 
+    AVBufferRef *hwaccel_params_buf;
+
     H264SliceContext *slice_ctx;
     int            nb_slice_ctx;
     int            nb_slice_ctx_queued;
