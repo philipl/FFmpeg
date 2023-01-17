@@ -65,6 +65,8 @@ typedef struct AV1DecContext {
     const AVClass *class;
     AVCodecContext *avctx;
 
+    AVBufferRef *hwaccel_params_buf;
+
     enum AVPixelFormat pix_fmt;
     CodedBitstreamContext *cbc;
     CodedBitstreamFragment current_obu;
