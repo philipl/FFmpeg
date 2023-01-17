@@ -347,6 +347,10 @@ int ff_h264_update_thread_context(AVCodecContext *dst,
             return ret;
     }
 
+    ret = av_buffer_replace(&h->hwaccel_params_buf, h1->hwaccel_params_buf);
+    if (ret < 0)
+        return ret;
+
     ret = av_buffer_replace(&h->ps.pps_ref, h1->ps.pps_ref);
     if (ret < 0)
         return ret;

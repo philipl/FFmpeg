@@ -341,6 +341,7 @@ static av_cold int h264_decode_end(AVCodecContext *avctx)
     H264Context *h = avctx->priv_data;
     int i;
 
+    av_buffer_unref(&h->hwaccel_params_buf);
     ff_h264_remove_all_refs(h);
     ff_h264_free_tables(h);
 
@@ -470,6 +471,7 @@ static void h264_decode_flush(AVCodecContext *avctx)
 
     ff_h264_flush_change(h);
     ff_h264_sei_uninit(&h->sei);
+    av_buffer_unref(&h->hwaccel_params_buf);
 
     for (i = 0; i < H264_MAX_PICTURE_COUNT; i++)
         ff_h264_unref_picture(h, &h->DPB[i]);
@@ -669,6 +671,7 @@ static int decode_nal_units(H264Context *h, const uint8_t *buf, int buf_size)
             avpriv_request_sample(avctx, "data partitioning");
             break;
         case H264_NAL_SEI:
+            av_buffer_unref(&h->hwaccel_params_buf);
             if (h->setup_finished) {
                 avpriv_request_sample(avctx, "Late SEI");
                 break;
@@ -682,6 +685,7 @@ static int decode_nal_units(H264Context *h, const uint8_t *buf, int buf_size)
             break;
         case H264_NAL_SPS: {
             GetBitContext tmp_gb = nal->gb;
+            av_buffer_unref(&h->hwaccel_params_buf);
             if (avctx->hwaccel && avctx->hwaccel->decode_params) {
                 ret = avctx->hwaccel->decode_params(avctx,
                                                     nal->type,
