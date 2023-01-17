@@ -2989,6 +2989,7 @@ static int decode_nal_unit(HEVCContext *s, const H2645NAL *nal)
 
     switch (s->nal_unit_type) {
     case HEVC_NAL_VPS:
+        av_buffer_unref(&s->hwaccel_params_buf);
         if (s->avctx->hwaccel && s->avctx->hwaccel->decode_params) {
             ret = s->avctx->hwaccel->decode_params(s->avctx,
                                                    nal->type,
@@ -3002,6 +3003,7 @@ static int decode_nal_unit(HEVCContext *s, const H2645NAL *nal)
             goto fail;
         break;
     case HEVC_NAL_SPS:
+        av_buffer_unref(&s->hwaccel_params_buf);
         if (s->avctx->hwaccel && s->avctx->hwaccel->decode_params) {
             ret = s->avctx->hwaccel->decode_params(s->avctx,
                                                    nal->type,
@@ -3016,6 +3018,7 @@ static int decode_nal_unit(HEVCContext *s, const H2645NAL *nal)
             goto fail;
         break;
     case HEVC_NAL_PPS:
+        av_buffer_unref(&s->hwaccel_params_buf);
         if (s->avctx->hwaccel && s->avctx->hwaccel->decode_params) {
             ret = s->avctx->hwaccel->decode_params(s->avctx,
                                                    nal->type,
@@ -3482,6 +3485,7 @@ static av_cold int hevc_decode_free(AVCodecContext *avctx)
 
     ff_dovi_ctx_unref(&s->dovi_ctx);
     av_buffer_unref(&s->rpu_buf);
+    av_buffer_unref(&s->hwaccel_params_buf);
 
     av_freep(&s->md5_ctx);
 
@@ -3633,6 +3637,10 @@ static int hevc_update_thread_context(AVCodecContext *dst,
     if (ret < 0)
         return ret;
 
+    ret = av_buffer_replace(&s->hwaccel_params_buf, s0->hwaccel_params_buf);
+    if (ret < 0)
+        return ret;
+
     ret = av_buffer_replace(&s->rpu_buf, s0->rpu_buf);
     if (ret < 0)
         return ret;
@@ -3710,6 +3718,7 @@ static void hevc_decode_flush(AVCodecContext *avctx)
     s->max_ra = INT_MAX;
     s->eos = 1;
 
+    av_buffer_unref(&s->hwaccel_params_buf);
     if (avctx->hwaccel && avctx->hwaccel->flush)
         avctx->hwaccel->flush(avctx);
 }

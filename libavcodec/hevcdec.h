@@ -514,6 +514,8 @@ typedef struct HEVCContext {
     uint8_t *sao_pixel_buffer_h[3];
     uint8_t *sao_pixel_buffer_v[3];
 
+    AVBufferRef *hwaccel_params_buf;
+
     HEVCParamSets ps;
     HEVCSEI sei;
     struct AVMD5 *md5_ctx;
