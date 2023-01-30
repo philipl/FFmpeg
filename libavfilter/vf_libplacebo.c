@@ -289,6 +289,11 @@ static int init_vulkan(AVFilterContext *avctx)
         .extensions     = hwctx->enabled_dev_extensions,
         .num_extensions = hwctx->nb_enabled_dev_extensions,
         .features       = &hwctx->device_features,
+#if PL_API_VER >= 201
+        .lock_queue     = (void (*)(void *, int, int)) hwctx->lock_queue,
+        .unlock_queue   = (void (*)(void *, int, int)) hwctx->unlock_queue,
+        .queue_ctx      = (void *) avhwctx,
+#endif
         .queue_graphics = {
             .index = hwctx->queue_family_index,
             .count = hwctx->nb_graphics_queues,
