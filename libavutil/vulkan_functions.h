@@ -38,6 +38,7 @@ typedef enum FFVulkanExtensions {
     FF_VK_EXT_EXTERNAL_WIN32_SEM     = 1ULL <<  7, /* VK_KHR_external_semaphore_win32 */
 #endif
     FF_VK_EXT_SYNC2                  = 1ULL <<  8, /* VK_KHR_synchronization2 */
+    FF_VK_EXT_DESCRIPTOR_BUFFER      = 1ULL <<  9, /* VK_EXT_descriptor_buffer */
 
     FF_VK_EXT_NO_FLAG                = 1ULL << 31,
 } FFVulkanExtensions;
@@ -121,6 +122,7 @@ typedef enum FFVulkanExtensions {
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              GetBufferMemoryRequirements2)            \
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              CreateBuffer)                            \
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              BindBufferMemory)                        \
+    MACRO(1, 1, FF_VK_EXT_NO_FLAG,              GetBufferDeviceAddress)                    \
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              DestroyBuffer)                           \
                                                                                          \
     /* Image */                                                                          \
@@ -142,6 +144,13 @@ typedef enum FFVulkanExtensions {
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              DestroyDescriptorPool)                   \
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              DestroyDescriptorSetLayout)              \
                                                                                          \
+    /* Descriptor buffers */                                                               \
+    MACRO(1, 1, FF_VK_EXT_DESCRIPTOR_BUFFER,    GetDescriptorSetLayoutSizeEXT)             \
+    MACRO(1, 1, FF_VK_EXT_DESCRIPTOR_BUFFER,    GetDescriptorSetLayoutBindingOffsetEXT)    \
+    MACRO(1, 1, FF_VK_EXT_DESCRIPTOR_BUFFER,    GetDescriptorEXT)                          \
+    MACRO(1, 1, FF_VK_EXT_DESCRIPTOR_BUFFER,    CmdBindDescriptorBuffersEXT)               \
+    MACRO(1, 1, FF_VK_EXT_DESCRIPTOR_BUFFER,    CmdSetDescriptorBufferOffsetsEXT)          \
+                                                                                           \
     /* DescriptorUpdateTemplate */                                                       \
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              UpdateDescriptorSetWithTemplate)         \
     MACRO(1, 1, FF_VK_EXT_NO_FLAG,              CreateDescriptorUpdateTemplate)          \
