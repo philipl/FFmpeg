@@ -1056,7 +1056,7 @@ int ff_vk_get_pooled_buffer(FFVulkanContext *ctx, AVBufferPool **buf_pool,
     if (!(*buf_pool)) {
         *buf_pool = av_buffer_pool_init2(sizeof(FFVkBuffer), ctx,
                                          alloc_data_buf, NULL);
-        if (*buf_pool)
+        if (!(*buf_pool))
             return AVERROR(ENOMEM);
     }
 

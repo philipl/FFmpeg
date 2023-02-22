@@ -26,8 +26,6 @@ name=$(basename "$input" | sed 's/\./_/')
 cat >$output <<EOF
 // Generated from $input
 const char *ff_source_$name =
-"#extension GL_GOOGLE_cpp_style_line_directive : require\n"
-"#line 1 \"$input\"\n"
 EOF
 
 # Convert \ to \\ and " to \", then add " to the start and end of the line.

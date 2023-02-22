@@ -155,16 +155,8 @@ static int glslc_shader_compile(FFVkSPIRVCompiler *ctx, void *avctx,
         .language                          = GLSLANG_SOURCE_GLSL,
         .stage                             = glslc_stage[shd->shader.stage],
         .client                            = GLSLANG_CLIENT_VULKAN,
-        /* GLSLANG_TARGET_VULKAN_1_2 before 11.6 resulted in targeting 1.0 */
-#if (((GLSLANG_VERSION_MAJOR) > 11) || ((GLSLANG_VERSION_MAJOR) == 11 && \
-    (((GLSLANG_VERSION_MINOR) >  6) || ((GLSLANG_VERSION_MINOR) ==  6 && \
-     ((GLSLANG_VERSION_PATCH) > 0)))))
-        .client_version                    = GLSLANG_TARGET_VULKAN_1_2,
-        .target_language_version           = GLSLANG_TARGET_SPV_1_5,
-#else
-        .client_version                    = GLSLANG_TARGET_VULKAN_1_1,
-        .target_language_version           = GLSLANG_TARGET_SPV_1_3,
-#endif
+        .client_version                    = GLSLANG_TARGET_VULKAN_1_3,
+        .target_language_version           = GLSLANG_TARGET_SPV_1_6,
         .target_language                   = GLSLANG_TARGET_SPV,
         .code                              = shd->src.str,
         .default_version                   = 460,
@@ -173,6 +165,13 @@ static int glslc_shader_compile(FFVkSPIRVCompiler *ctx, void *avctx,
         .forward_compatible                = false,
         .messages                          = GLSLANG_MSG_DEFAULT_BIT,
         .resource                          = &glslc_resource_limits,
+    };
+
+    glslang_spv_options_t spv_opts = {
+        .generate_debug_info = 1,
+        .strip_debug_info = 0,
+        .disable_optimizer = 1,
+        .disassemble = 0,
     };
 
     av_assert0(glslc_refcount);
@@ -218,7 +217,8 @@ static int glslc_shader_compile(FFVkSPIRVCompiler *ctx, void *avctx,
         return AVERROR(EINVAL);
     }
 
-    glslang_program_SPIRV_generate(glslc_program, glslc_input.stage);
+    glslang_program_SPIRV_generate_with_options(glslc_program, glslc_input.stage,
+                                                &spv_opts);
 
     messages = glslang_program_SPIRV_get_messages(glslc_program);
     if (messages) {

@@ -386,6 +386,8 @@ OBJS-$(CONFIG_MULTIPLY_FILTER)               += vf_multiply.o
 OBJS-$(CONFIG_NEGATE_FILTER)                 += vf_negate.o
 OBJS-$(CONFIG_NLMEANS_FILTER)                += vf_nlmeans.o
 OBJS-$(CONFIG_NLMEANS_OPENCL_FILTER)         += vf_nlmeans_opencl.o opencl.o opencl/nlmeans.o
+OBJS-$(CONFIG_NLMEANS_VULKAN_FILTER)         += vf_nlmeans_vulkan.o vulkan.o vulkan_filter.o \
+                                                vulkan/prefix_sum.o
 OBJS-$(CONFIG_NNEDI_FILTER)                  += vf_nnedi.o
 OBJS-$(CONFIG_NOFORMAT_FILTER)               += vf_format.o
 OBJS-$(CONFIG_NOISE_FILTER)                  += vf_noise.o
@@ -649,7 +651,8 @@ TESTPROGS-$(CONFIG_DNN) += dnn-layer-avgpool dnn-layer-conv2d dnn-layer-dense  \
 TOOLS-$(CONFIG_LIBZMQ) += zmqsend
 
 clean::
-	$(RM) $(CLEANSUFFIXES:%=libavfilter/dnn/%) $(CLEANSUFFIXES:%=libavfilter/opencl/%)
+	$(RM) $(CLEANSUFFIXES:%=libavfilter/dnn/%) $(CLEANSUFFIXES:%=libavfilter/opencl/%) \
+              $(CLEANSUFFIXES:%=libavfilter/vulkan/%)
 
 OPENCL = $(subst $(SRC_PATH)/,,$(wildcard $(SRC_PATH)/libavfilter/opencl/*.cl))
 .SECONDARY: $(OPENCL:.cl=.c)
@@ -657,3 +660,8 @@ libavfilter/opencl/%.c: TAG = OPENCL
 libavfilter/opencl/%.c: $(SRC_PATH)/libavfilter/opencl/%.cl
 	$(M)$(SRC_PATH)/tools/source2c $< $@
 
+VULKAN = $(subst $(SRC_PATH)/,,$(wildcard $(SRC_PATH)/libavfilter/vulkan/*.comp))
+.SECONDARY: $(VULKAN:.comp=.c)
+libavfilter/vulkan/%.c: TAG = OPENCL
+libavfilter/vulkan/%.c: $(SRC_PATH)/libavfilter/vulkan/%.comp
+	$(M)$(SRC_PATH)/tools/source2c $< $@
