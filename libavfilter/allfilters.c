@@ -553,6 +553,7 @@ extern const AVFilter ff_vsrc_rgbtestsrc;
 extern const AVFilter ff_vsrc_sierpinski;
 extern const AVFilter ff_vsrc_smptebars;
 extern const AVFilter ff_vsrc_smptehdbars;
+extern const AVFilter ff_vsrc_smptehdbars_vulkan;
 extern const AVFilter ff_vsrc_testsrc;
 extern const AVFilter ff_vsrc_testsrc2;
 extern const AVFilter ff_vsrc_yuvtestsrc;
