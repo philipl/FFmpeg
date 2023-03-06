@@ -40,6 +40,7 @@
 #include "avassert.h"
 #include "hwcontext_internal.h"
 #include "hwcontext_vulkan.h"
+#include "hwcontext_vulkan_internal.h"
 
 #include "vulkan.h"
 #include "vulkan_loader.h"
@@ -118,18 +119,6 @@ typedef struct VulkanDevicePriv {
     /* Nvidia */
     int dev_is_nvidia;
 } VulkanDevicePriv;
-
-typedef struct VulkanFramesPriv {
-    /* Image conversions */
-    FFVkExecPool compute_exec;
-
-    /* Image transfers */
-    FFVkExecPool upload_exec;
-    FFVkExecPool download_exec;
-
-    /* Modifier info list to free at uninit */
-    VkImageDrmFormatModifierListCreateInfoEXT *modifier_info;
-} VulkanFramesPriv;
 
 typedef struct AVVkFrameInternal {
     pthread_mutex_t update_mutex;
@@ -2164,6 +2153,8 @@ static void vulkan_frames_uninit(AVHWFramesContext *hwfc)
     ff_vk_exec_pool_free(&p->vkctx, &fp->compute_exec);
     ff_vk_exec_pool_free(&p->vkctx, &fp->upload_exec);
     ff_vk_exec_pool_free(&p->vkctx, &fp->download_exec);
+
+    av_freep(&fp->video_profile_data);
 }
 
 static int vulkan_frames_init(AVHWFramesContext *hwfc)
