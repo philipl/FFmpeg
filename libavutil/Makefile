@@ -216,6 +216,7 @@ SKIPHEADERS-$(CONFIG_VAAPI)            += hwcontext_vaapi.h
 SKIPHEADERS-$(CONFIG_VIDEOTOOLBOX)     += hwcontext_videotoolbox.h
 SKIPHEADERS-$(CONFIG_VDPAU)            += hwcontext_vdpau.h
 SKIPHEADERS-$(CONFIG_VULKAN)           += hwcontext_vulkan.h vulkan.h   \
+                                          hwcontext_vulkan_internal.h   \
                                           vulkan_functions.h            \
                                           vulkan_loader.h
 
