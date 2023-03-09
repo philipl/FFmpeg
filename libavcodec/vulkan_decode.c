@@ -641,7 +641,8 @@ repeat:
     usage->videoUsageHints = VK_VIDEO_DECODE_USAGE_DEFAULT_KHR;
 
     profile->sType               = VK_STRUCTURE_TYPE_VIDEO_PROFILE_INFO_KHR;
-    profile->pNext               = usage;
+    /* Adding a usage STILL breaks nvidia as of 2023.03! */
+    profile->pNext               = usage->pNext;
     profile->videoCodecOperation = vk_codec->decode_op;
     profile->chromaSubsampling   = ff_vk_subsampling_from_av_desc(desc);
     profile->lumaBitDepth        = ff_vk_depth_from_av_depth(desc->comp[0].depth);

@@ -57,6 +57,11 @@ static int vk_h264_fill_pict(AVCodecContext *avctx, H264Picture **ref_src,
     H264VulkanDecodePicture *hp = pic->hwaccel_picture_private;
     FFVulkanDecodePicture *vkpic = &hp->vp;
 
+    /* As of 2023-03, NVIDIA's drivers require that both fields are set to 1
+     * for progressive video, despite the spec requiring the opposite.
+     * Remove me when a new version is available. */
+    int nv_hack = ctx->s.driver_props.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY;
+
     int err = ff_vk_decode_prepare_frame(ctx, pic->f, vkpic, is_current,
                                          ctx->dedicated_dpb);
     if (err < 0)
@@ -66,8 +71,8 @@ static int vk_h264_fill_pict(AVCodecContext *avctx, H264Picture **ref_src,
         .FrameNum = pic->long_ref ? pic->pic_id : pic->frame_num, /* TODO: kinda sure */
         .PicOrderCnt = { pic->field_poc[0], pic->field_poc[1] },
         .flags = (StdVideoDecodeH264ReferenceInfoFlags) {
-            .top_field_flag    = is_field ? !!(picture_structure & PICT_TOP_FIELD)    : 0,
-            .bottom_field_flag = is_field ? !!(picture_structure & PICT_BOTTOM_FIELD) : 0,
+            .top_field_flag    = is_field ? !!(picture_structure & PICT_TOP_FIELD)    : nv_hack,
+            .bottom_field_flag = is_field ? !!(picture_structure & PICT_BOTTOM_FIELD) : nv_hack,
             .used_for_long_term_reference = pic->reference && pic->long_ref,
             .is_non_existing = 0,
         },
