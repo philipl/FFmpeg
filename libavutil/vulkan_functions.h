@@ -39,6 +39,7 @@ typedef enum FFVulkanExtensions {
 #endif
     FF_VK_EXT_SYNC2                  = 1ULL <<  8, /* VK_KHR_synchronization2 */
     FF_VK_EXT_DESCRIPTOR_BUFFER      = 1ULL <<  9, /* VK_EXT_descriptor_buffer */
+    FF_VK_EXT_DEVICE_DRM             = 1ULL << 10, /* VK_EXT_physical_device_drm */
 
     FF_VK_EXT_NO_FLAG                = 1ULL << 31,
 } FFVulkanExtensions;
