@@ -1234,6 +1234,8 @@ static int vulkan_device_create_internal(AVHWDeviceContext *ctx,
     COPY_FEATURE(hwctx->device_features, fragmentStoresAndAtomics)
     COPY_FEATURE(hwctx->device_features, vertexPipelineStoresAndAtomics)
     COPY_FEATURE(hwctx->device_features, shaderInt64)
+    COPY_FEATURE(hwctx->device_features, shaderInt16)
+    COPY_FEATURE(hwctx->device_features, shaderFloat64)
 #undef COPY_FEATURE
 
     /* We require timeline semaphores */
@@ -1242,10 +1244,23 @@ static int vulkan_device_create_internal(AVHWDeviceContext *ctx,
         err = AVERROR(ENOSYS);
         goto end;
     }
+
+    p->device_features_1_1.samplerYcbcrConversion = dev_features_1_1.samplerYcbcrConversion;
+    p->device_features_1_1.storagePushConstant16 = dev_features_1_1.storagePushConstant16;
+
     p->device_features_1_2.timelineSemaphore = 1;
     p->device_features_1_2.bufferDeviceAddress = dev_features_1_2.bufferDeviceAddress;
-    p->device_features_1_1.samplerYcbcrConversion = dev_features_1_1.samplerYcbcrConversion;
+    p->device_features_1_2.storagePushConstant8 = dev_features_1_2.storagePushConstant8;
+    p->device_features_1_2.shaderInt8 = dev_features_1_2.shaderInt8;
+    p->device_features_1_2.storageBuffer8BitAccess = dev_features_1_2.storageBuffer8BitAccess;
+    p->device_features_1_2.uniformAndStorageBuffer8BitAccess = dev_features_1_2.uniformAndStorageBuffer8BitAccess;
+    p->device_features_1_2.shaderFloat16 = dev_features_1_2.shaderFloat16;
+    p->device_features_1_2.shaderSharedInt64Atomics = dev_features_1_2.shaderSharedInt64Atomics;
+
     p->device_features_1_3.synchronization2 = dev_features_1_3.synchronization2;
+    p->device_features_1_3.computeFullSubgroups = dev_features_1_3.computeFullSubgroups;
+    p->device_features_1_3.shaderZeroInitializeWorkgroupMemory = dev_features_1_3.shaderZeroInitializeWorkgroupMemory;
+
     p->desc_buf_features.descriptorBuffer = desc_buf_features.descriptorBuffer;
     p->desc_buf_features.descriptorBufferPushDescriptors = desc_buf_features.descriptorBufferPushDescriptors;
 
