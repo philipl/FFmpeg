@@ -2484,8 +2484,7 @@ static int vulkan_map_from_drm_frame_desc(AVHWFramesContext *hwfc, AVVkFrame **f
             .extent.depth          = 1,
             .mipLevels             = 1,
             .arrayLayers           = 1,
-            .flags                 = VK_IMAGE_CREATE_ALIAS_BIT |
-                                     VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
+            .flags                 = 0,
             .tiling                = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
             .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED, /* specs say so */
             .usage                 = VK_IMAGE_USAGE_SAMPLED_BIT |
@@ -2573,13 +2572,13 @@ static int vulkan_map_from_drm_frame_desc(AVHWFramesContext *hwfc, AVVkFrame **f
          * offer us anything we could import and sync with, so instead
          * just signal the semaphore we created. */
 
-        f->queue_family[i] = VK_QUEUE_FAMILY_EXTERNAL_KHR;
+        f->queue_family[i] = VK_QUEUE_FAMILY_IGNORED;
         f->layout[i] = create_info.initialLayout;
         f->access[i] = 0x0;
         f->sem_value[i] = 0;
     }
 
-    for (int i = 0; i < desc->nb_objects; i++) {
+    for (int i = 0; i < desc->nb_layers; i++) {
         /* Memory requirements */
         VkImageMemoryRequirementsInfo2 req_desc = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
@@ -2597,9 +2596,13 @@ static int vulkan_map_from_drm_frame_desc(AVHWFramesContext *hwfc, AVVkFrame **f
         VkMemoryFdPropertiesKHR fdmp = {
             .sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR,
         };
+        /* This assumes that a layer will never be constructed from multiple
+         * objects. If that was to happen in the real world, this code would
+         * need to import each plane separately.
+         */
         VkImportMemoryFdInfoKHR idesc = {
             .sType      = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR,
-            .fd         = dup(desc->objects[i].fd),
+            .fd         = dup(desc->objects[desc->layers[i].planes[0].object_index].fd),
             .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
         };
         VkMemoryDedicatedAllocateInfo ded_alloc = {
@@ -2653,7 +2656,7 @@ static int vulkan_map_from_drm_frame_desc(AVHWFramesContext *hwfc, AVVkFrame **f
             bind_info[bind_counts].sType  = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
             bind_info[bind_counts].pNext  = planes > 1 ? &plane_info[bind_counts] : NULL;
             bind_info[bind_counts].image  = f->img[i];
-            bind_info[bind_counts].memory = f->mem[desc->layers[i].planes[j].object_index];
+            bind_info[bind_counts].memory = f->mem[i];
 
             /* Offset is already signalled via pPlaneLayouts above */
             bind_info[bind_counts].memoryOffset = 0;
