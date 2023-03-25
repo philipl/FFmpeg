@@ -358,7 +358,7 @@ av_cold void ff_bwdif_init_filter_line(BWDIFContext *s, int bit_depth)
     }
 
 #if ARCH_X86
-    ff_bwdif_init_x86(s, bit_depth);
+    // ff_bwdif_init_x86(s, bit_depth);
 #endif
 }
 
