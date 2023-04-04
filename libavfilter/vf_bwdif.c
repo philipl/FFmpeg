@@ -106,6 +106,11 @@ typedef struct ThreadData {
             interpol = (c + e) >> 1;
 
 #define FILTER2() \
+            if (interpol > d + diff) \
+                interpol = d + diff; \
+            else if (interpol < d - diff) \
+                interpol = d - diff; \
+ \
             dst[0] = av_clip(interpol, 0, clip_max); \
         } \
  \
