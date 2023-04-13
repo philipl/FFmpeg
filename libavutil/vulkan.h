@@ -239,6 +239,10 @@ typedef struct FFVulkanContext {
     VkQueueFamilyVideoPropertiesKHR *video_props;
     VkQueueFamilyProperties2 *qf_props;
 
+    VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomic_float_feats;
+    VkPhysicalDeviceVulkan12Features feats_12;
+    VkPhysicalDeviceFeatures2 feats;
+
     AVHWDeviceContext     *device;
     AVVulkanDeviceContext *hwctx;
 
