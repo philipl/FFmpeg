@@ -40,14 +40,15 @@ typedef enum FFVulkanExtensions {
     FF_VK_EXT_SYNC2                  = 1ULL <<  8, /* VK_KHR_synchronization2 */
     FF_VK_EXT_DESCRIPTOR_BUFFER      = 1ULL <<  9, /* VK_EXT_descriptor_buffer */
     FF_VK_EXT_DEVICE_DRM             = 1ULL << 10, /* VK_EXT_physical_device_drm */
-    FF_VK_EXT_VIDEO_QUEUE            = 1ULL << 11, /* VK_KHR_video_queue */
-    FF_VK_EXT_VIDEO_DECODE_QUEUE     = 1ULL << 12, /* VK_KHR_video_decode_queue */
-    FF_VK_EXT_VIDEO_DECODE_H264      = 1ULL << 13, /* VK_EXT_video_decode_h264 */
-    FF_VK_EXT_VIDEO_DECODE_H265      = 1ULL << 14, /* VK_EXT_video_decode_h265 */
-    FF_VK_EXT_VIDEO_ENCODE_QUEUE     = 1ULL << 15, /* VK_KHR_video_encode_queue */
-    FF_VK_EXT_VIDEO_ENCODE_H264      = 1ULL << 16, /* VK_EXT_video_encode_h264 */
-    FF_VK_EXT_VIDEO_ENCODE_H265      = 1ULL << 17, /* VK_EXT_video_encode_h265 */
-    FF_VK_EXT_VIDEO_DECODE_AV1       = 1ULL << 18, /* VK_MESA_video_decode_av1 */
+    FF_VK_EXT_ATOMIC_FLOAT           = 1ULL << 11, /* VK_EXT_shader_atomic_float */
+    FF_VK_EXT_VIDEO_QUEUE            = 1ULL << 12, /* VK_KHR_video_queue */
+    FF_VK_EXT_VIDEO_DECODE_QUEUE     = 1ULL << 13, /* VK_KHR_video_decode_queue */
+    FF_VK_EXT_VIDEO_DECODE_H264      = 1ULL << 14, /* VK_EXT_video_decode_h264 */
+    FF_VK_EXT_VIDEO_DECODE_H265      = 1ULL << 15, /* VK_EXT_video_decode_h265 */
+    FF_VK_EXT_VIDEO_ENCODE_QUEUE     = 1ULL << 16, /* VK_KHR_video_encode_queue */
+    FF_VK_EXT_VIDEO_ENCODE_H264      = 1ULL << 17, /* VK_EXT_video_encode_h264 */
+    FF_VK_EXT_VIDEO_ENCODE_H265      = 1ULL << 18, /* VK_EXT_video_encode_h265 */
+    FF_VK_EXT_VIDEO_DECODE_AV1       = 1ULL << 19, /* VK_MESA_video_decode_av1 */
 
     FF_VK_EXT_NO_FLAG                = 1ULL << 31,
 } FFVulkanExtensions;
