@@ -1104,31 +1104,33 @@ static int setup_queue_families(AVHWDeviceContext *ctx, VkDeviceCreateInfo *cd)
             dec_index = -1;                                                    \
         }                                                                      \
                                                                                \
-        pc = av_realloc((void *)cd->pQueueCreateInfos,                         \
-                        sizeof(*pc) * (cd->queueCreateInfoCount + 1));         \
-        if (!pc) {                                                             \
-            av_free(qf);                                                       \
-            return AVERROR(ENOMEM);                                            \
+        if (cd) {                                                              \
+            pc = av_realloc((void *)cd->pQueueCreateInfos,                     \
+                            sizeof(*pc) * (cd->queueCreateInfoCount + 1));     \
+            if (!pc) {                                                         \
+                av_free(qf);                                                   \
+                return AVERROR(ENOMEM);                                        \
+            }                                                                  \
+            cd->pQueueCreateInfos = pc;                                        \
+            pc = &pc[cd->queueCreateInfoCount];                                \
+                                                                               \
+            weights = av_malloc(qc * sizeof(float));                           \
+            if (!weights) {                                                    \
+                av_free(qf);                                                   \
+                return AVERROR(ENOMEM);                                        \
+            }                                                                  \
+                                                                               \
+            memset(pc, 0, sizeof(*pc));                                        \
+            pc->sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO; \
+            pc->queueFamilyIndex = fidx;                                       \
+            pc->queueCount       = qc;                                         \
+            pc->pQueuePriorities = weights;                                    \
+                                                                               \
+            for (int i = 0; i < qc; i++)                                       \
+                weights[i] = 1.0f / qc;                                        \
+                                                                               \
+            cd->queueCreateInfoCount++;                                        \
         }                                                                      \
-        cd->pQueueCreateInfos = pc;                                            \
-        pc = &pc[cd->queueCreateInfoCount];                                    \
-                                                                               \
-        weights = av_malloc(qc * sizeof(float));                               \
-        if (!weights) {                                                        \
-            av_free(qf);                                                       \
-            return AVERROR(ENOMEM);                                            \
-        }                                                                      \
-                                                                               \
-        memset(pc, 0, sizeof(*pc));                                            \
-        pc->sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;     \
-        pc->queueFamilyIndex = fidx;                                           \
-        pc->queueCount       = qc;                                             \
-        pc->pQueuePriorities = weights;                                        \
-                                                                               \
-        for (int i = 0; i < qc; i++)                                           \
-            weights[i] = 1.0f / qc;                                            \
-                                                                               \
-        cd->queueCreateInfoCount++;                                            \
     }
 
     SETUP_QUEUE(graph_index)
@@ -1416,6 +1418,20 @@ static int vulkan_device_init(AVHWDeviceContext *ctx)
             return AVERROR(ENOMEM);
         for (int j = 0; j < qf[i].queueCount; j++)
             pthread_mutex_init(&p->qf_mutex[i][j], NULL);
+    }
+
+    /*
+     * If the caller didn't specify any queues at all, try and set up queue
+     * assignments using our normal logic. This will only work if the caller
+     * initialised all the queues we normally use.
+     *
+     * If the caller configured at least one queue, we assume that any other
+     * zeroed queues have been configured that way intentionally.
+     */
+    if (hwctx->nb_graphics_queues + hwctx->nb_tx_queues + hwctx->nb_comp_queues +
+        hwctx->nb_encode_queues + hwctx->nb_decode_queues == 0) {
+        if ((err = setup_queue_families(ctx, NULL)))
+            return err;
     }
 
     graph_index = hwctx->queue_family_index;

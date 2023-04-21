@@ -66,6 +66,15 @@ typedef struct AVVulkanDeviceContext {
 
     /**
      * Active device
+     *
+     * If an active device is provided by the caller, the caller is responsible
+     * for initialising the features, extensions, and queues in a way that is
+     * compatible for use with a Vulkan device context.
+     *
+     * If the caller does not initialise all the queue families used below, it
+     * must explicitly set the queue indexes and counts for all queues. If the
+     * caller does initialise all the queue families and leaves all the queue
+     * counts as zero, init will use the default queue assignments.
      */
     VkDevice act_dev;
 
