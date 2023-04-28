@@ -1104,8 +1104,8 @@ int avcodec_get_hw_frames_parameters(AVCodecContext *avctx,
     return ret;
 }
 
-static int hwaccel_init(AVCodecContext *avctx,
-                        const AVHWAccel *hwaccel)
+int ff_hwaccel_init(AVCodecContext *avctx,
+                    const AVHWAccel *hwaccel)
 {
     int err;
 
@@ -1263,7 +1263,7 @@ int ff_get_format(AVCodecContext *avctx, const enum AVPixelFormat *fmt)
         if (hw_config->hwaccel) {
             av_log(avctx, AV_LOG_DEBUG, "Format %s requires hwaccel "
                    "initialisation.\n", desc->name);
-            err = hwaccel_init(avctx, hw_config->hwaccel);
+            err = ff_hwaccel_init(avctx, hw_config->hwaccel);
             if (err < 0)
                 goto try_again;
         }

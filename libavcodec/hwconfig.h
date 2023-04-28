@@ -24,6 +24,7 @@
 
 
 #define HWACCEL_CAP_ASYNC_SAFE      (1 << 0)
+#define HWACCEL_CAP_THREAD_SAFE     (1 << 1)
 
 
 typedef struct AVCodecHWConfigInternal {
@@ -39,6 +40,8 @@ typedef struct AVCodecHWConfigInternal {
     const AVHWAccel *hwaccel;
 } AVCodecHWConfigInternal;
 
+int ff_hwaccel_init(AVCodecContext *avctx,
+                    const AVHWAccel *hwaccel);
 void ff_hwaccel_uninit(AVCodecContext *avctx);
 
 // These macros are used to simplify AVCodecHWConfigInternal definitions.
