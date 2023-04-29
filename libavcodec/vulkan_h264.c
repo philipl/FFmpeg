@@ -63,7 +63,7 @@ static int vk_h264_fill_pict(AVCodecContext *avctx, H264Picture **ref_src,
         return err;
 
     *h264_ref = (StdVideoDecodeH264ReferenceInfo) {
-        .FrameNum = pic->long_ref ? pic->pic_id : pic->frame_num, /* TODO: kinda sure */
+        .FrameNum = pic->long_ref ? pic->pic_id : pic->frame_num,
         .PicOrderCnt = { pic->field_poc[0], pic->field_poc[1] },
         .flags = (StdVideoDecodeH264ReferenceInfoFlags) {
             .top_field_flag    = is_field ? !!(picture_structure & PICT_TOP_FIELD)    : 0,
@@ -89,7 +89,7 @@ static int vk_h264_fill_pict(AVCodecContext *avctx, H264Picture **ref_src,
     *ref_slot = (VkVideoReferenceSlotInfoKHR) {
         .sType = VK_STRUCTURE_TYPE_VIDEO_REFERENCE_SLOT_INFO_KHR,
         .pNext = vkh264_ref,
-        .slotIndex = dpb_slot_index, /* TODO: kinda sure */
+        .slotIndex = dpb_slot_index,
         .pPictureResource = ref,
     };
 
@@ -346,15 +346,13 @@ static int vk_h264_start_frame(AVCodecContext          *avctx,
     H264VulkanDecodePicture *hp = pic->hwaccel_picture_private;
     FFVulkanDecodePicture *vp = &hp->vp;
 
-    if (!h->hwaccel_params_buf) {
-        err = vk_h264_create_params(avctx, &h->hwaccel_params_buf);
+    if (!ctx->session_params || ctx->params_changed) {
+        av_buffer_unref(&ctx->session_params);
+        err = vk_h264_create_params(avctx, &ctx->session_params);
         if (err < 0)
             return err;
+        ctx->params_changed = 0;
     }
-
-    vp->session_params = av_buffer_ref(h->hwaccel_params_buf);
-    if (!vp->session_params)
-        return AVERROR(ENOMEM);
 
     /* Fill in main slot */
     dpb_slot_index = 0;
@@ -420,13 +418,11 @@ static int vk_h264_start_frame(AVCodecContext          *avctx,
         .PicOrderCnt[1] = pic->field_poc[1],
         .flags = (StdVideoDecodeH264PictureInfoFlags) {
             .field_pic_flag = FIELD_PICTURE(h),
-            .is_intra = 1,
+            .is_intra = 1, /* Set later */
             .IdrPicFlag = h->picture_idr,
             .bottom_field_flag = h->picture_structure != PICT_FRAME &&
                                  h->picture_structure & PICT_BOTTOM_FIELD,
             .is_reference = h->nal_ref_idc != 0,
-
-            // TODO: Not sure about this
             .complementary_field_pair = h->first_field && FIELD_PICTURE(h),
         },
     };
@@ -506,9 +502,8 @@ static int vk_h264_end_frame(AVCodecContext *avctx)
     return ff_vk_decode_frame(avctx, pic->f, vp, rav, rvp);
 }
 
-static void vk_h264_free_frame_priv(void *_avctx, uint8_t *data)
+static void vk_h264_free_frame_priv(void *avctx, uint8_t *data)
 {
-    AVCodecContext *avctx = _avctx;
     H264VulkanDecodePicture *hp = (H264VulkanDecodePicture *)data;
 
     /* Free frame resources, this also destroys the session parameters. */
@@ -519,19 +514,21 @@ static void vk_h264_free_frame_priv(void *_avctx, uint8_t *data)
 }
 
 const AVHWAccel ff_h264_vulkan_hwaccel = {
-    .name                 = "h264_vulkan",
-    .type                 = AVMEDIA_TYPE_VIDEO,
-    .id                   = AV_CODEC_ID_H264,
-    .pix_fmt              = AV_PIX_FMT_VULKAN,
-    .start_frame          = &vk_h264_start_frame,
-    .decode_slice         = &vk_h264_decode_slice,
-    .end_frame            = &vk_h264_end_frame,
-    .free_frame_priv      = &vk_h264_free_frame_priv,
-    .frame_priv_data_size = sizeof(H264VulkanDecodePicture),
-    .init                 = &ff_vk_decode_init,
-    .flush                = &ff_vk_decode_flush,
-    .uninit               = &ff_vk_decode_uninit,
-    .frame_params         = &ff_vk_frame_params,
-    .priv_data_size       = sizeof(FFVulkanDecodeContext),
-    .caps_internal        = HWACCEL_CAP_ASYNC_SAFE | HWACCEL_CAP_THREAD_SAFE,
+    .name                  = "h264_vulkan",
+    .type                  = AVMEDIA_TYPE_VIDEO,
+    .id                    = AV_CODEC_ID_H264,
+    .pix_fmt               = AV_PIX_FMT_VULKAN,
+    .start_frame           = &vk_h264_start_frame,
+    .decode_slice          = &vk_h264_decode_slice,
+    .end_frame             = &vk_h264_end_frame,
+    .free_frame_priv       = &vk_h264_free_frame_priv,
+    .frame_priv_data_size  = sizeof(H264VulkanDecodePicture),
+    .init                  = &ff_vk_decode_init,
+    .update_thread_context = &ff_vk_update_thread_context,
+    .decode_params         = &ff_vk_params_changed,
+    .flush                 = &ff_vk_decode_flush,
+    .uninit                = &ff_vk_decode_uninit,
+    .frame_params          = &ff_vk_frame_params,
+    .priv_data_size        = sizeof(FFVulkanDecodeContext),
+    .caps_internal         = HWACCEL_CAP_ASYNC_SAFE | HWACCEL_CAP_THREAD_SAFE,
 };
