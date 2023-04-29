@@ -28,6 +28,7 @@
 typedef struct FFVulkanDecodeContext {
     FFVulkanContext s;
     FFVkVideoCommon common;
+    FFVkExecPool *exec_pool;
 
     int dedicated_dpb; /* Oddity  #1 - separate DPB images */
     int layered_dpb;   /* Madness #1 - layered  DPB images */
@@ -45,15 +46,14 @@ typedef struct FFVulkanDecodeContext {
     VkVideoDecodeCapabilitiesKHR dec_caps;
     int init;
 
-    uint32_t frame_id_alloc_mask; /* For AV1 only */
-
-    FFVkQueueFamilyCtx qf_dec;
-    FFVkExecPool exec_pool;
-
+    /* Thread-local state below */
     AVBufferPool *tmp_pool; /* Pool for temporary data, if needed (HEVC) */
     size_t tmp_pool_ele_size;
 
-    uint16_t last_ref_frames_in_use;
+    /* Thread-synchronized data below */
+    AVBufferRef *session_params;
+    int params_changed;
+    uint32_t frame_id_alloc_mask; /* For AV1 only */
 } FFVulkanDecodeContext;
 
 typedef struct FFVulkanDecodePicture {
@@ -97,6 +97,11 @@ typedef struct FFVulkanDecodePicture {
 int ff_vk_decode_init(AVCodecContext *avctx);
 
 /**
+ * Synchronize the contexts between 2 threads.
+ */
+int ff_vk_update_thread_context(AVCodecContext *dst, const AVCodecContext *src);
+
+/**
  * Initialize hw_frames_ctx with the parameters needed to decode the stream
  * using the parameters from avctx.
  *
@@ -104,6 +109,11 @@ int ff_vk_decode_init(AVCodecContext *avctx);
  * the context.
  */
 int ff_vk_frame_params(AVCodecContext *avctx, AVBufferRef *hw_frames_ctx);
+
+/**
+ * Sets FFVulkanDecodeContext.params_changed to 1.
+ */
+int ff_vk_params_changed(AVCodecContext *avctx, int t, const uint8_t *b, uint32_t s);
 
 /**
  * Prepare a frame, creates the image view, and sets up the dpb fields.
