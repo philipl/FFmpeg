@@ -748,15 +748,13 @@ static int vk_hevc_start_frame(AVCodecContext          *avctx,
     const HEVCPPS *pps = h->ps.pps;
     int nb_refs = 0;
 
-    if (!h->hwaccel_params_buf) {
-        err = vk_hevc_create_params(avctx, &h->hwaccel_params_buf);
+    if (!ctx->session_params || ctx->params_changed) {
+        av_buffer_unref(&ctx->session_params);
+        err = vk_hevc_create_params(avctx, &ctx->session_params);
         if (err < 0)
             return err;
+        ctx->params_changed = 0;
     }
-
-    vp->session_params = av_buffer_ref(h->hwaccel_params_buf);
-    if (!vp->session_params)
-        return AVERROR(ENOMEM);
 
     hp->h265pic = (StdVideoDecodeH265PictureInfo) {
         .flags = (StdVideoDecodeH265PictureInfoFlags) {
@@ -900,9 +898,8 @@ static int vk_hevc_end_frame(AVCodecContext *avctx)
     return ff_vk_decode_frame(avctx, pic->frame, vp, rav, rvp);
 }
 
-static void vk_hevc_free_frame_priv(void *_avctx, uint8_t *data)
+static void vk_hevc_free_frame_priv(void *avctx, uint8_t *data)
 {
-    AVCodecContext *avctx = _avctx;
     HEVCVulkanDecodePicture *hp = (HEVCVulkanDecodePicture *)data;
 
     /* Free frame resources */
@@ -913,19 +910,21 @@ static void vk_hevc_free_frame_priv(void *_avctx, uint8_t *data)
 }
 
 const AVHWAccel ff_hevc_vulkan_hwaccel = {
-    .name                 = "hevc_vulkan",
-    .type                 = AVMEDIA_TYPE_VIDEO,
-    .id                   = AV_CODEC_ID_HEVC,
-    .pix_fmt              = AV_PIX_FMT_VULKAN,
-    .start_frame          = &vk_hevc_start_frame,
-    .decode_slice         = &vk_hevc_decode_slice,
-    .end_frame            = &vk_hevc_end_frame,
-    .free_frame_priv      = &vk_hevc_free_frame_priv,
-    .frame_priv_data_size = sizeof(HEVCVulkanDecodePicture),
-    .init                 = &ff_vk_decode_init,
-    .flush                = &ff_vk_decode_flush,
-    .uninit               = &ff_vk_decode_uninit,
-    .frame_params         = &ff_vk_frame_params,
-    .priv_data_size       = sizeof(FFVulkanDecodeContext),
-    .caps_internal        = HWACCEL_CAP_ASYNC_SAFE | HWACCEL_CAP_THREAD_SAFE,
+    .name                  = "hevc_vulkan",
+    .type                  = AVMEDIA_TYPE_VIDEO,
+    .id                    = AV_CODEC_ID_HEVC,
+    .pix_fmt               = AV_PIX_FMT_VULKAN,
+    .start_frame           = &vk_hevc_start_frame,
+    .decode_slice          = &vk_hevc_decode_slice,
+    .end_frame             = &vk_hevc_end_frame,
+    .free_frame_priv       = &vk_hevc_free_frame_priv,
+    .frame_priv_data_size  = sizeof(HEVCVulkanDecodePicture),
+    .init                  = &ff_vk_decode_init,
+    .update_thread_context = &ff_vk_update_thread_context,
+    .decode_params         = &ff_vk_params_changed,
+    .flush                 = &ff_vk_decode_flush,
+    .uninit                = &ff_vk_decode_uninit,
+    .frame_params          = &ff_vk_frame_params,
+    .priv_data_size        = sizeof(FFVulkanDecodeContext),
+    .caps_internal         = HWACCEL_CAP_ASYNC_SAFE | HWACCEL_CAP_THREAD_SAFE,
 };
