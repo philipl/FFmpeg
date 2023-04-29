@@ -225,15 +225,13 @@ static int vk_av1_start_frame(AVCodecContext          *avctx,
     const int apply_grain = !(avctx->export_side_data & AV_CODEC_EXPORT_DATA_FILM_GRAIN) &&
                             film_grain->apply_grain;
 
-    if (!s->hwaccel_params_buf) {
-        err = vk_av1_create_params(avctx, &s->hwaccel_params_buf);
+    if (!ctx->session_params || ctx->params_changed) {
+        av_buffer_unref(&ctx->session_params);
+        err = vk_av1_create_params(avctx, &ctx->session_params);
         if (err < 0)
             return err;
+        ctx->params_changed = 0;
     }
-
-    vp->session_params = av_buffer_ref(s->hwaccel_params_buf);
-    if (!vp->session_params)
-        return AVERROR(ENOMEM);
 
     if (!ap->frame_id_set) {
         unsigned slot_idx = 0;
@@ -562,19 +560,21 @@ static void vk_av1_free_frame_priv(void *_avctx, uint8_t *data)
 }
 
 const AVHWAccel ff_av1_vulkan_hwaccel = {
-    .name                 = "av1_vulkan",
-    .type                 = AVMEDIA_TYPE_VIDEO,
-    .id                   = AV_CODEC_ID_AV1,
-    .pix_fmt              = AV_PIX_FMT_VULKAN,
-    .start_frame          = &vk_av1_start_frame,
-    .decode_slice         = &vk_av1_decode_slice,
-    .end_frame            = &vk_av1_end_frame,
-    .free_frame_priv      = &vk_av1_free_frame_priv,
-    .frame_priv_data_size = sizeof(AV1VulkanDecodePicture),
-    .init                 = &ff_vk_decode_init,
-    .flush                = &ff_vk_decode_flush,
-    .uninit               = &ff_vk_decode_uninit,
-    .frame_params         = &ff_vk_frame_params,
-    .priv_data_size       = sizeof(FFVulkanDecodeContext),
-    .caps_internal        = HWACCEL_CAP_ASYNC_SAFE,
+    .name                  = "av1_vulkan",
+    .type                  = AVMEDIA_TYPE_VIDEO,
+    .id                    = AV_CODEC_ID_AV1,
+    .pix_fmt               = AV_PIX_FMT_VULKAN,
+    .start_frame           = &vk_av1_start_frame,
+    .decode_slice          = &vk_av1_decode_slice,
+    .end_frame             = &vk_av1_end_frame,
+    .free_frame_priv       = &vk_av1_free_frame_priv,
+    .frame_priv_data_size  = sizeof(AV1VulkanDecodePicture),
+    .init                  = &ff_vk_decode_init,
+    .update_thread_context = &ff_vk_update_thread_context,
+    .decode_params         = &ff_vk_params_changed,
+    .flush                 = &ff_vk_decode_flush,
+    .uninit                = &ff_vk_decode_uninit,
+    .frame_params          = &ff_vk_frame_params,
+    .priv_data_size        = sizeof(FFVulkanDecodeContext),
+    .caps_internal         = HWACCEL_CAP_ASYNC_SAFE,
 };
