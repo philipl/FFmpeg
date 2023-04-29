@@ -1124,7 +1124,7 @@ int ff_hwaccel_init(AVCodecContext *avctx,
     }
 
     avctx->hwaccel = hwaccel;
-    if (hwaccel->init) {
+    if (hwaccel->init && !avctx->internal->is_copy) {
         err = hwaccel->init(avctx);
         if (err < 0) {
             av_log(avctx, AV_LOG_ERROR, "Failed setup for format %s: "
@@ -1141,7 +1141,7 @@ int ff_hwaccel_init(AVCodecContext *avctx,
 
 void ff_hwaccel_uninit(AVCodecContext *avctx)
 {
-    if (avctx->hwaccel && avctx->hwaccel->uninit)
+    if (avctx->hwaccel && avctx->hwaccel->uninit && !avctx->internal->is_copy)
         avctx->hwaccel->uninit(avctx);
 
     av_freep(&avctx->internal->hwaccel_priv_data);
