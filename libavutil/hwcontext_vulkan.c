@@ -1866,6 +1866,7 @@ static int prepare_frame(AVHWFramesContext *hwfc, FFVkExecPool *ectx,
     uint32_t dst_qf = VK_QUEUE_FAMILY_IGNORED;
     VkImageLayout new_layout;
     VkAccessFlags2 new_access;
+    VkPipelineStageFlagBits2 src_stage = VK_PIPELINE_STAGE_2_NONE;
 
     /* This is dirty - but it works. The vulkan.c dependency system doesn't
      * free non-refcounted frames, and non-refcounted hardware frames cannot
@@ -1902,6 +1903,7 @@ static int prepare_frame(AVHWFramesContext *hwfc, FFVkExecPool *ectx,
         new_layout = VK_IMAGE_LAYOUT_GENERAL;
         new_access = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
         dst_qf     = VK_QUEUE_FAMILY_EXTERNAL_KHR;
+        src_stage  = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
         break;
     case PREP_MODE_DECODING_DST:
         new_layout = VK_IMAGE_LAYOUT_VIDEO_DECODE_DST_KHR;
@@ -1918,7 +1920,7 @@ static int prepare_frame(AVHWFramesContext *hwfc, FFVkExecPool *ectx,
     }
 
     ff_vk_frame_barrier(&p->vkctx, exec, &tmp_frame, img_bar, &nb_img_bar,
-                        VK_PIPELINE_STAGE_2_NONE,
+                        src_stage,
                         VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                         new_access, new_layout, dst_qf);
 

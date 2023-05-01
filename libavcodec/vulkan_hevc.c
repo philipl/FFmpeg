@@ -320,7 +320,7 @@ static void set_sps(const HEVCSPS *sps, int sps_idx,
     }
 
     for (int i = 0; i < (sps->chroma_format_idc ? 3 : 1); i++)
-        for (int j = 0; j <= sps->sps_num_palette_predictor_initializers_minus1; j++)
+        for (int j = 0; j <= sps->sps_num_palette_predictor_initializers; j++)
             pal->PredictorPaletteEntries[i][j] = sps->sps_palette_predictor_initializer[i][j];
 
     for (int i = 0; i < sps->nb_st_rps; i++) {
@@ -426,7 +426,7 @@ static void set_sps(const HEVCSPS *sps, int sps_idx,
         .palette_max_size = sps->palette_max_size,
         .delta_palette_max_predictor_size = sps->delta_palette_max_predictor_size,
         .motion_vector_resolution_control_idc = sps->motion_vector_resolution_control_idc,
-        .sps_num_palette_predictor_initializers_minus1 = sps->sps_num_palette_predictor_initializers_minus1,
+        .sps_num_palette_predictor_initializers_minus1 = sps->sps_num_palette_predictor_initializers,
         .conf_win_left_offset = sps->pic_conf_win.left_offset,
         .conf_win_right_offset = sps->pic_conf_win.right_offset,
         .conf_win_top_offset = sps->pic_conf_win.top_offset,
