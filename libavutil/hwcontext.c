@@ -232,11 +232,11 @@ static void hwframe_ctx_free(void *opaque, uint8_t *data)
     FFHWFramesContext *ctxi = (FFHWFramesContext*)data;
     AVHWFramesContext *ctx  = &ctxi->p;
 
-    if (ctxi->pool_internal)
-        av_buffer_pool_uninit(&ctxi->pool_internal);
-
     if (ctxi->hw_type->frames_uninit)
         ctxi->hw_type->frames_uninit(ctx);
+
+    if (ctxi->pool_internal)
+        av_buffer_pool_uninit(&ctxi->pool_internal);
 
     if (ctx->free)
         ctx->free(ctx);
