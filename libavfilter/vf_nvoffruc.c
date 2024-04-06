@@ -27,6 +27,7 @@
 
 #include <dlfcn.h>
 #include "libavutil/avassert.h"
+#include "libavutil/eval.h"
 #include "libavutil/cuda_check.h"
 #include "libavutil/hwcontext.h"
 #include "libavutil/hwcontext_cuda_internal.h"
@@ -46,6 +47,29 @@
  */
 #include "NvOFFRUC.h"
 
+static const char *const var_names[] = {
+  "source_fps",
+  "ntsc",
+  "pal",
+  "film",
+  "ntsc_film",
+  NULL
+};
+
+enum var_name {
+  VAR_SOURCE_FPS,
+  VAR_FPS_NTSC,
+  VAR_FPS_PAL,
+  VAR_FPS_FILM,
+  VAR_FPS_NTSC_FILM,
+  VARS_NB
+};
+
+static const double ntsc_fps = 30000.0 / 1001.0;
+static const double pal_fps = 25.0;
+static const double film_fps = 24.0;
+static const double ntsc_film_fps = 24000.0 / 1001.0;
+
 typedef struct FRUCContext {
     const AVClass *class;
 
@@ -58,6 +82,7 @@ typedef struct FRUCContext {
     CUarray   c1;                       ///< CUarray for f1
     CUarray   cw;                       ///< CUarray for work
 
+    char *requested_frame_rate;         ///< expression that defines the target framerate
     AVRational dest_frame_rate;
     int interp_start;                   ///< start of range to apply interpolation
     int interp_end;                     ///< end of range to apply interpolation
@@ -94,10 +119,9 @@ typedef struct FRUCContext {
 #define FRAMERATE_FLAG_SCD 01
 
 static const AVOption nvoffruc_options[] = {
-    {"fps",                 "required output frames per second rate", OFFSET(dest_frame_rate), AV_OPT_TYPE_VIDEO_RATE, {.str="50"},             0,       INT_MAX, V|F },
-
-    {"interp_start",        "point to start linear interpolation",    OFFSET(interp_start),    AV_OPT_TYPE_INT,      {.i64=15},                 0,       255,     V|F },
-    {"interp_end",          "point to end linear interpolation",      OFFSET(interp_end),      AV_OPT_TYPE_INT,      {.i64=240},                0,       255,     V|F },
+    {"fps",             "A string describing desired output framerate", OFFSET(requested_frame_rate),   AV_OPT_TYPE_STRING, { .str = "50" },    0,  0,      V|F },
+    {"interp_start",    "point to start linear interpolation",          OFFSET(interp_start),           AV_OPT_TYPE_INT,    {.i64=15},          0,  255,    V|F },
+    {"interp_end",      "point to end linear interpolation",            OFFSET(interp_end),             AV_OPT_TYPE_INT,    {.i64=240},         0,  255,    V|F },
 
     {NULL}
 };
@@ -482,6 +506,7 @@ static int config_output(AVFilterLink *outlink)
     NvOFFRUC_CREATE_PARAM create_param = {0,};
     NvOFFRUC_REGISTER_RESOURCE_PARAM register_param = {0,};
     NvOFFRUC_STATUS status;
+    double var_values[VARS_NB], res;
     int exact;
     int ret;
 
@@ -491,6 +516,20 @@ static int config_output(AVFilterLink *outlink)
            "config_output() input time base:%u/%u (%f)\n",
            ctx->inputs[0]->time_base.num,ctx->inputs[0]->time_base.den,
            av_q2d(ctx->inputs[0]->time_base));
+
+
+    var_values[VAR_SOURCE_FPS]    = av_q2d(inlink->frame_rate);
+    var_values[VAR_FPS_NTSC]      = ntsc_fps;
+    var_values[VAR_FPS_PAL]       = pal_fps;
+    var_values[VAR_FPS_FILM]      = film_fps;
+    var_values[VAR_FPS_NTSC_FILM] = ntsc_film_fps;
+    ret = av_expr_parse_and_eval(&res, s->requested_frame_rate,
+                                 var_names, var_values,
+                                 NULL, NULL, NULL, NULL, NULL, 0, ctx);
+    if (ret < 0)
+        return ret;
+
+    s->dest_frame_rate = av_d2q(res, INT_MAX);
 
     // make sure timebase is small enough to hold the framerate
 
