@@ -25,7 +25,11 @@
  * FRUC library.
  */
 
-#include <dlfcn.h>
+#ifdef _WIN32
+#  include <windows.h>
+#else
+#  include <dlfcn.h>
+#endif
 #include "libavutil/avassert.h"
 #include "libavutil/eval.h"
 #include "libavutil/cuda_check.h"
@@ -315,7 +319,7 @@ static av_cold int init(AVFilterContext *ctx)
     FRUCContext *s = ctx->priv;
     s->start_pts = AV_NOPTS_VALUE;
 
-    // TODO: Need windows equivalent symbol loading
+#ifndef _WIN32
     s->fruc_dl = dlopen("libNvOFFRUC.so", RTLD_LAZY);
     if (!s->fruc_dl) {
         av_log(ctx, AV_LOG_ERROR, "Failed to load FRUC: %s\n", dlerror());
@@ -332,6 +336,35 @@ static av_cold int init(AVFilterContext *ctx)
         dlsym(s->fruc_dl, "NvOFFRUCProcess");
     s->NvOFFRUCDestroy = (PtrToFuncNvOFFRUCDestroy)
         dlsym(s->fruc_dl, "NvOFFRUCDestroy");
+  
+#else /* _WIN32 */
+    s->fruc_dl = LoadLibrary("NvOFFRUC.dll");
+    if (!s->fruc_dl) {
+        DWORD error_code = GetLastError();
+        LPSTR error_msg = NULL;
+
+        if (error_code)
+            FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                 NULL, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&error_msg, 0, NULL);
+        av_log(ctx, AV_LOG_ERROR, "Failed to load FRUC: %s\n", error_msg && *error_msg ? error_msg : "Unknown");
+
+        if (errorMessage)
+            LocalFree(errorMessage);
+        return AVERROR(EINVAL);
+    }
+
+    s->NvOFFRUCCreate = (PtrToFuncNvOFFRUCCreate)
+        GetProcAddress(s->fruc_dl, "NvOFFRUCCreate");
+    s->NvOFFRUCRegisterResource = (PtrToFuncNvOFFRUCRegisterResource)
+        GetProcAddress(s->fruc_dl, "NvOFFRUCRegisterResource");
+    s->NvOFFRUCUnregisterResource = (PtrToFuncNvOFFRUCUnregisterResource)
+        GetProcAddress(s->fruc_dl, "NvOFFRUCUnregisterResource");
+    s->NvOFFRUCProcess = (PtrToFuncNvOFFRUCProcess)
+        GetProcAddress(s->fruc_dl, "NvOFFRUCProcess");
+    s->NvOFFRUCDestroy = (PtrToFuncNvOFFRUCDestroy)
+        GetProcAddress(s->fruc_dl, "NvOFFRUCDestroy");
+
+#endif /* _WIN32 */
     return 0;
 }
 
@@ -367,7 +400,11 @@ static av_cold void uninit(AVFilterContext *ctx)
     }
 
     if (s->fruc_dl)
+#ifndef _WIN32
         dlclose(s->fruc_dl);
+#else /* _WIN32 */
+        FreeLibrary(s->fruc_dl);
+#endif /* _WIN32 */
     av_frame_free(&s->f0);
     av_frame_free(&s->f1);
     av_buffer_unref(&s->device_ref);
