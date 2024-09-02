@@ -36,7 +36,6 @@
 
 #include "avfilter.h"
 #include "filters.h"
-#include "internal.h"
 #include "video.h"
 /*
  * This cannot be distributed with the filter due to licensing. If you want to
@@ -497,6 +496,8 @@ static int config_output(AVFilterLink *outlink)
 {
     AVFilterContext *ctx = outlink->src;
     AVFilterLink *inlink = outlink->src->inputs[0];
+    FilterLink   *il     = ff_filter_link(inlink);
+    FilterLink   *ol     = ff_filter_link(outlink);
     AVHWFramesContext *in_frames_ctx;
     AVHWFramesContext *output_frames;
     FRUCContext *s = ctx->priv;
@@ -518,7 +519,7 @@ static int config_output(AVFilterLink *outlink)
            av_q2d(ctx->inputs[0]->time_base));
 
 
-    var_values[VAR_SOURCE_FPS]    = av_q2d(inlink->frame_rate);
+    var_values[VAR_SOURCE_FPS]    = av_q2d(il->frame_rate);
     var_values[VAR_FPS_NTSC]      = ntsc_fps;
     var_values[VAR_FPS_PAL]       = pal_fps;
     var_values[VAR_FPS_FILM]      = film_fps;
@@ -546,7 +547,7 @@ static int config_output(AVFilterLink *outlink)
         av_log(ctx, AV_LOG_WARNING, "Timebase conversion is not exact\n");
     }
 
-    outlink->frame_rate = s->dest_frame_rate;
+    ol->frame_rate = s->dest_frame_rate;
     outlink->time_base = s->dest_time_base;
 
     ff_dlog(ctx,
@@ -560,11 +561,11 @@ static int config_output(AVFilterLink *outlink)
             s->dest_frame_rate.num, s->dest_frame_rate.den);
 
     /* check that we have a hw context */
-    if (!inlink->hw_frames_ctx) {
+    if (!il->hw_frames_ctx) {
         av_log(ctx, AV_LOG_ERROR, "No hw context provided on input\n");
         return AVERROR(EINVAL);
     }
-    in_frames_ctx = (AVHWFramesContext*)inlink->hw_frames_ctx->data;
+    in_frames_ctx = (AVHWFramesContext*)il->hw_frames_ctx->data;
     s->format = in_frames_ctx->sw_format;
 
     if (!format_is_supported(s->format)) {
@@ -581,11 +582,11 @@ static int config_output(AVFilterLink *outlink)
     s->cu_ctx = s->hwctx->cuda_ctx;
     s->stream = s->hwctx->stream;
     cu = s->hwctx->internal->cuda_dl;
-    outlink->hw_frames_ctx = av_hwframe_ctx_alloc(s->device_ref);
-    if (!inlink->hw_frames_ctx)
+    ol->hw_frames_ctx = av_hwframe_ctx_alloc(s->device_ref);
+    if (!il->hw_frames_ctx)
         return AVERROR(ENOMEM);
 
-    output_frames = (AVHWFramesContext*)outlink->hw_frames_ctx->data;
+    output_frames = (AVHWFramesContext*)ol->hw_frames_ctx->data;
 
     output_frames->format    = AV_PIX_FMT_CUDA;
     output_frames->sw_format = s->format;
@@ -598,7 +599,7 @@ static int config_output(AVFilterLink *outlink)
     if (ret < 0)
         return ret;
 
-    ret = av_hwframe_ctx_init(outlink->hw_frames_ctx);
+    ret = av_hwframe_ctx_init(ol->hw_frames_ctx);
     if (ret < 0) {
         av_log(ctx, AV_LOG_ERROR, "Failed to initialise CUDA frame "
                "context for output: %d\n", ret);
