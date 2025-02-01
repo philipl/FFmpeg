@@ -673,11 +673,11 @@ static const AVFilterPad framerate_outputs[] = {
     },
 };
 
-const AVFilter ff_vf_nvoffruc = {
-    .name          = "nvoffruc",
-    .description   = NULL_IF_CONFIG_SMALL("Upsamples progressive source to specified frame rates with nvidia FRUC"),
+const FFFilter ff_vf_nvoffruc = {
+    .p.name          = "nvoffruc",
+    .p.description   = NULL_IF_CONFIG_SMALL("Upsamples progressive source to specified frame rates with nvidia FRUC"),
+    .p.priv_class    = &nvoffruc_class,
     .priv_size     = sizeof(FRUCContext),
-    .priv_class    = &nvoffruc_class,
     .init          = init,
     .uninit        = uninit,
     .activate      = activate,
