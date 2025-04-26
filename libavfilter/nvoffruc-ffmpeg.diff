@@ -1,0 +1,53 @@
+--- NvOFFRUC.h	2025-04-26 16:18:00.389485374 -0700
++++ NvOFFRUC.h	2025-04-26 16:14:11.907541103 -0700
+@@ -13,7 +13,6 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <stdint.h>
+-using namespace std;
+ 
+ #ifdef __linux__ 
+     #define OS_LINUX 1
+@@ -211,9 +210,8 @@
+     *  Supported error strings
+     */
+ 
+-    static const char *NvOFFRUCErrorString[]
+-    {
+-        "This indicates that API call returned with no errors."
++    static const char *NvOFFRUCErrorString[] = {
++        "This indicates that API call returned with no errors.",
+         "This indicates that HW Optical flow functionality is not supported",
+         "This indicates that one or more of the pointers passed to the API call is invalid.",
+         "This indicates that one or more of the parameter passed to the API call is invalid.",
+@@ -228,7 +226,7 @@
+         "This indicates that the API sequence is incorrect i.e, the order of calls is incorrect",
+         "This indicates that an interpolated frame could not be written to disk",
+         "This indicates that one of the FRUC pipeline stages returned error",
+-        "This indicates that write synchronization failed"
++        "This indicates that write synchronization failed",
+         "This indicates that an unknown internal error has occurred"
+     };
+ 
+@@ -241,9 +239,9 @@
+         uint32_t                    uiWidth;            /**< [in]: Specifies input/output video surface width. */
+         uint32_t                    uiHeight;           /**< [in]: Specifies input/output video surface height. */
+         void*                       pDevice;            /**< [in]: Specifies d3d device created by client. */
+-        NvOFFRUCResourceType        eResourceType;      /**< [in]: Specifies whether resource created by client is DX or CUDA. */
+-        NvOFFRUCSurfaceFormat       eSurfaceFormat;     /**< [in]: Specifies surface format i.e. NV12 or ARGB. */
+-        NvOFFRUCCUDAResourceType    eCUDAResourceType;  /**< [in]: Specifies whether CUDA resource is cuDevicePtr or cuArray. */
++        enum NvOFFRUCResourceType        eResourceType;      /**< [in]: Specifies whether resource created by client is DX or CUDA. */
++        enum NvOFFRUCSurfaceFormat       eSurfaceFormat;     /**< [in]: Specifies surface format i.e. NV12 or ARGB. */
++        enum NvOFFRUCCUDAResourceType    eCUDAResourceType;  /**< [in]: Specifies whether CUDA resource is cuDevicePtr or cuArray. */
+         uint32_t                    uiReserved[32];
+     }NvOFFRUC_CREATE_PARAM;
+ 
+@@ -256,7 +254,7 @@
+         void*                   pFrame;             /**< Frame as D3D Resource ID3D11Texture2D* etc:.*/
+         double                  nTimeStamp;         /**< Frame time stamp. */
+         size_t                  nCuSurfacePitch;    /**< Pitch for CUDA Pitch Allocations*/
+-        bool*                   bHasFrameRepetitionOccurred;  /**< [out]: flag to indicate whether frame repeatition has occured */
++        void*                   bHasFrameRepetitionOccurred;  /**< [out]: flag to indicate whether frame repeatition has occured */
+         uint32_t                uiReserved[32];
+     }NvOFFRUC_FRAMEDATA;
+ 

@@ -44,9 +44,9 @@
 /*
  * This cannot be distributed with the filter due to licensing. If you want to
  * compile this filter, you will need to obtain it from nvidia and then fix it
- * to work in a pure C environment:
- * * Remove the `using namespace std;`
- * * Replace the `bool *` with `void *`
+ * to work in a pure C environment. Apply nvoffruc-ffmpeg.diff to make these
+ * fixes.
+ *
  */
 #include "NvOFFRUC.h"
 
