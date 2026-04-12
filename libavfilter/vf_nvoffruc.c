@@ -576,6 +576,13 @@ static int config_output(AVFilterLink *outlink)
                              (int64_t)s->srce_time_base.den * s->dest_frame_rate.den ),
                       (int64_t)s->srce_time_base.den * s->dest_frame_rate.num, INT_MAX);
 
+    if (!s->dest_time_base.num || !s->dest_time_base.den) {
+        // LCM of source time base and dest frame interval exceeded INT_MAX;
+        // fall back to the inverse of the dest frame rate as the time base.
+        exact = av_reduce(&s->dest_time_base.num, &s->dest_time_base.den,
+                          s->dest_frame_rate.den, s->dest_frame_rate.num, INT_MAX);
+    }
+
     av_log(ctx, AV_LOG_INFO,
            "time base:%u/%u -> %u/%u exact:%d\n",
            s->srce_time_base.num, s->srce_time_base.den,
