@@ -265,6 +265,7 @@ static int blend_frames(AVFilterContext *ctx, int64_t work_pts)
 static int process_work_frame(AVFilterContext *ctx)
 {
     FRUCContext *s = ctx->priv;
+    AVFilterLink *outlink = ctx->outputs[0];
     int64_t work_pts;
     int64_t interpolate, interpolate8;
     int ret;
@@ -306,6 +307,15 @@ static int process_work_frame(AVFilterContext *ctx)
 
     if (!s->work)
         return AVERROR(ENOMEM);
+
+    /* Update hw_frames_ctx on passthrough/cloned frames to match output context */
+    {
+        FilterLink *ol = ff_filter_link(outlink);
+        if (s->work->hw_frames_ctx != ol->hw_frames_ctx) {
+            av_buffer_unref(&s->work->hw_frames_ctx);
+            s->work->hw_frames_ctx = av_buffer_ref(ol->hw_frames_ctx);
+        }
+    }
 
     s->work->pts = work_pts;
     s->n++;
